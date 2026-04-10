@@ -1,6 +1,7 @@
 'use client'
 
 import { type ReactNode } from 'react'
+import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { AuthProvider } from '@/components/providers/AuthProvider'
 import { ToastProvider } from '@/components/providers/ToastProvider'
 
@@ -10,10 +11,12 @@ interface Props {
 
 export function AppProviders({ children }: Props) {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        {children}
-      </ToastProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <ToastProvider>
+          {children}
+        </ToastProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }

@@ -63,9 +63,9 @@ export function RepoCard({ repo, viewMode, isPinned, onStartSession, onTogglePin
       onClick={() => onStartSession(repo)}
       className={cn(
         'group relative cursor-pointer transition-all duration-200',
-        'hover:-translate-y-0.5 hover:border-[#0f5132]/40 hover:shadow-md',
+        'hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-        isPinned && 'border-[#0f5132]/30 bg-gradient-to-br from-card to-[#dcfce7]/30',
+        isPinned && 'border-primary/30 bg-gradient-to-br from-card to-primary/[0.04]',
         isGrid ? 'flex flex-col gap-3.5 p-5' : 'flex flex-row items-center gap-5 p-4 px-5'
       )}
     >
@@ -88,7 +88,7 @@ export function RepoCard({ repo, viewMode, isPinned, onStartSession, onTogglePin
         <Star
           className={cn(
             'h-4 w-4 transition-colors',
-            isPinned ? 'fill-[#0f5132] text-[#0f5132]' : 'text-muted-foreground'
+            isPinned ? 'fill-primary text-primary' : 'text-muted-foreground'
           )}
         />
       </button>
@@ -165,7 +165,7 @@ export function RepoCard({ repo, viewMode, isPinned, onStartSession, onTogglePin
           e.stopPropagation()
           onStartSession(repo)
         }}
-        className="shrink-0 gap-1.5 rounded-full bg-[#0f5132] font-semibold text-white shadow-sm hover:bg-[#0a3d25]"
+        className="shrink-0 gap-1.5 rounded-full bg-primary font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
       >
         <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
         Start Session

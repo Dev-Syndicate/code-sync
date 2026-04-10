@@ -28,6 +28,7 @@ import { SessionCard } from '@/components/dashboard/SessionCard'
 import { StatsStrip } from '@/components/dashboard/StatsStrip'
 import { RecentSessions } from '@/components/dashboard/RecentSessions'
 import { CommandPalette } from '@/components/dashboard/CommandPalette'
+import { ThemeToggle } from '@/components/dashboard/ThemeToggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -160,7 +161,7 @@ export default function DashboardPage() {
         <aside className="fixed left-0 top-0 hidden h-screen w-[240px] flex-col border-r border-border/60 bg-sidebar p-5 lg:flex">
           {/* Logo */}
           <Link href="/dashboard" className="mb-8 flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#0f5132] to-[#22c55e] shadow-sm shadow-[#0f5132]/20">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-700 to-emerald-500 shadow-sm shadow-emerald-700/20">
               <Code2 className="h-[18px] w-[18px] text-white" strokeWidth={2.5} />
             </div>
             <span className="text-lg font-extrabold tracking-tight text-foreground">
@@ -184,7 +185,7 @@ export default function DashboardPage() {
                   className={cn(
                     'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
                     item.active
-                      ? 'bg-[#0f5132] text-white shadow-sm shadow-[#0f5132]/25'
+                      ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/25'
                       : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                   )}
                 >
@@ -216,7 +217,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => logout()}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
             >
               <LogOut className="h-[18px] w-[18px]" strokeWidth={2} />
               Logout
@@ -225,7 +226,7 @@ export default function DashboardPage() {
 
           {/* Promo card */}
           <div className="mt-auto">
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0f5132] via-[#166534] to-[#064e3b] p-5 text-white">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-900 p-5 text-white">
               <div
                 className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-white/10 blur-xl"
                 aria-hidden
@@ -242,7 +243,7 @@ export default function DashboardPage() {
                   href="https://github.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-[#0f5132] transition-colors hover:bg-white/90"
+                  className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-emerald-800 transition-colors hover:bg-white/90"
                 >
                   Learn more
                 </a>
@@ -258,7 +259,7 @@ export default function DashboardPage() {
             <div className="flex h-[72px] items-center justify-between gap-4 px-6 sm:px-8">
               {/* Mobile logo (hidden on lg+) */}
               <div className="flex items-center gap-2.5 lg:hidden">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#0f5132] to-[#22c55e]">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-700 to-emerald-500">
                   <Code2 className="h-[18px] w-[18px] text-white" strokeWidth={2.5} />
                 </div>
                 <span className="text-lg font-extrabold">CodeSync</span>
@@ -301,11 +302,14 @@ export default function DashboardPage() {
                   <Bell className="h-[18px] w-[18px]" />
                 </Button>
 
+                {/* Theme toggle */}
+                <ThemeToggle />
+
                 {/* Primary action */}
                 {allRepos.length > 0 && (
                   <Button
                     onClick={() => handleStartSession(allRepos[0])}
-                    className="hidden h-10 gap-1.5 rounded-full bg-[#0f5132] px-4 font-semibold text-white shadow-sm shadow-[#0f5132]/20 hover:bg-[#0a3d25] sm:inline-flex"
+                    className="hidden h-10 gap-1.5 rounded-full bg-primary px-4 font-semibold text-primary-foreground shadow-sm shadow-primary/20 hover:bg-primary/90 sm:inline-flex"
                   >
                     <Plus className="h-4 w-4" strokeWidth={2.5} />
                     New Session
@@ -326,7 +330,7 @@ export default function DashboardPage() {
                     >
                       <Avatar className="h-10 w-10 ring-2 ring-border/60">
                         <AvatarImage src={user?.avatar} alt={user?.username ?? 'User'} />
-                        <AvatarFallback className="bg-gradient-to-br from-[#0f5132] to-[#22c55e] text-xs font-bold text-white">
+                        <AvatarFallback className="bg-gradient-to-br from-emerald-700 to-emerald-500 text-xs font-bold text-white">
                           {user?.username?.charAt(0).toUpperCase() ?? 'U'}
                         </AvatarFallback>
                       </Avatar>
@@ -416,7 +420,7 @@ export default function DashboardPage() {
                   <h2 className="text-lg font-bold text-foreground">Active Sessions</h2>
                   <Badge
                     variant="secondary"
-                    className="border-0 bg-[#0f5132]/10 text-[#0f5132] hover:bg-[#0f5132]/15"
+                    className="border-0 bg-primary/10 text-primary hover:bg-primary/15"
                   >
                     {activeSessions.length}
                   </Badge>
@@ -524,7 +528,7 @@ export default function DashboardPage() {
                       {activeFilterCount > 0 && (
                         <Badge
                           variant="secondary"
-                          className="ml-0.5 h-4 border-0 bg-[#0f5132] px-1.5 text-[10px] text-white"
+                          className="ml-0.5 h-4 border-0 bg-primary px-1.5 text-[10px] text-primary-foreground"
                         >
                           {activeFilterCount}
                         </Badge>
@@ -603,7 +607,7 @@ export default function DashboardPage() {
                     className={cn(
                       'h-10 w-10 rounded-none',
                       viewMode === 'grid'
-                        ? 'bg-[#0f5132] text-white hover:bg-[#0f5132] hover:text-white'
+                        ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
                         : 'text-muted-foreground'
                     )}
                   >
@@ -620,7 +624,7 @@ export default function DashboardPage() {
                     className={cn(
                       'h-10 w-10 rounded-none',
                       viewMode === 'list'
-                        ? 'bg-[#0f5132] text-white hover:bg-[#0f5132] hover:text-white'
+                        ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
                         : 'text-muted-foreground'
                     )}
                   >

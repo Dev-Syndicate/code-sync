@@ -111,7 +111,7 @@ export function RepoList({
       {pinned.length > 0 && (
         <div>
           <div className="mb-3 flex items-center gap-2">
-            <Star className="h-3.5 w-3.5 fill-[#0f5132] text-[#0f5132]" aria-hidden />
+            <Star className="h-3.5 w-3.5 fill-primary text-primary" aria-hidden />
             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Pinned
             </h3>

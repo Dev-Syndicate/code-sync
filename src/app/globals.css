@@ -1,38 +1,42 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* ═══ BASE THEME — Donezo-inspired Light / Forest Green ═══ */
+@custom-variant dark (&:is(.dark *));
+
+/* ═══════════════════════════════════════════════════════════ */
+/* LIGHT THEME — Professional Indigo + Zinc                     */
+/* ═══════════════════════════════════════════════════════════ */
 :root {
   /* ─── Brand Colors ─── */
   --color-primary:        #0f5132;  /* deep forest — primary brand */
   --color-primary-hover:  #0a3d25;
-  --color-primary-light:  #bbf7d0;  /* mint — soft accent */
-  --color-primary-dark:   #064e3b;  /* darker emerald */
+  --color-primary-light:  #dcfce7;  /* mint-100 */
+  --color-primary-dark:   #064e3b;
 
-  --color-accent:         #22c55e;  /* vivid green — highlights */
-  --color-accent-hover:   #16a34a;
+  --color-accent:         #16a34a;  /* green-600 */
+  --color-accent-hover:   #15803d;
   --color-danger:         #ef4444;
   --color-warning:        #f59e0b;
   --color-success:        #22c55e;
 
-  /* ─── Background (light theme) ─── */
-  --bg-base:              #f6f7f9;  /* soft off-white page bg */
-  --bg-surface:           #ffffff;  /* pure white cards */
-  --bg-elevated:          #f1f5f4;  /* hover / active nav item */
-  --bg-overlay:           rgba(17, 24, 39, 0.5);
+  /* ─── Background ─── */
+  --bg-base:              #fafafa;  /* zinc-50 */
+  --bg-surface:           #ffffff;
+  --bg-elevated:          #f4f4f5;  /* zinc-100 */
+  --bg-overlay:           rgba(9, 9, 11, 0.5);
 
-  /* ─── Text (dark on light) ─── */
-  --text-primary:         #111827;  /* near-black */
-  --text-secondary:       #6b7280;  /* muted gray */
-  --text-muted:           #9ca3af;  /* lighter gray */
-  --text-inverse:         #ffffff;
+  /* ─── Text ─── */
+  --text-primary:         #09090b;  /* zinc-950 */
+  --text-secondary:       #52525b;  /* zinc-600 */
+  --text-muted:           #a1a1aa;  /* zinc-400 */
+  --text-inverse:         #fafafa;
 
   /* ─── Borders ─── */
-  --border-default:       #e5e7eb;  /* neutral-200 */
-  --border-subtle:        #f3f4f6;  /* neutral-100 */
-  --border-strong:        #d1d5db;  /* neutral-300 */
+  --border-default:       #e4e4e7;  /* zinc-200 */
+  --border-subtle:        #f4f4f5;
+  --border-strong:        #d4d4d8;  /* zinc-300 */
 
-  /* ─── Editor (keep dark for code) ─── */
+  /* ─── Editor (kept dark for code) ─── */
   --editor-bg:            #0d1117;
   --editor-sidebar:       #161b22;
   --editor-tab-active:    #1e293b;
@@ -50,8 +54,8 @@
 
   /* ─── Border Radius ─── */
   --radius-sm:   6px;
-  --radius-md:   10px;
-  --radius-lg:   14px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
   --radius-full: 9999px;
 
   /* ─── Typography ─── */
@@ -66,10 +70,10 @@
   --text-2xl:  24px;
   --text-3xl:  30px;
 
-  /* ─── Shadows (lighter for light theme) ─── */
-  --shadow-sm:  0 1px 2px rgba(17, 24, 39, 0.04);
-  --shadow-md:  0 4px 12px rgba(17, 24, 39, 0.06);
-  --shadow-lg:  0 12px 28px rgba(17, 24, 39, 0.08);
+  /* ─── Shadows (light) ─── */
+  --shadow-sm:  0 1px 2px rgba(9, 9, 11, 0.04);
+  --shadow-md:  0 4px 12px rgba(9, 9, 11, 0.06);
+  --shadow-lg:  0 12px 28px rgba(9, 9, 11, 0.08);
 
   /* ─── Transitions ─── */
   --transition-fast:   150ms ease;
@@ -87,16 +91,16 @@
   --background: var(--bg-base);
   --foreground: var(--text-primary);
 
-  /* ─── shadcn/ui tokens → aliased to custom tokens ─── */
+  /* ─── shadcn/ui tokens ─── */
   --card:                  var(--bg-surface);
   --card-foreground:       var(--text-primary);
   --popover:               #ffffff;
   --popover-foreground:    var(--text-primary);
   --primary:               var(--color-primary);
   --primary-foreground:    #ffffff;
-  --secondary:             #f3f4f6;
+  --secondary:             var(--bg-elevated);
   --secondary-foreground:  var(--text-primary);
-  --muted:                 #f3f4f6;
+  --muted:                 var(--bg-elevated);
   --muted-foreground:      var(--text-secondary);
   --accent:                var(--bg-elevated);
   --accent-foreground:     var(--color-primary);
@@ -105,7 +109,7 @@
   --border:                var(--border-default);
   --input:                 var(--border-default);
   --ring:                  var(--color-primary);
-  --radius:                0.75rem;
+  --radius:                0.625rem;
   --chart-1:               var(--color-primary);
   --chart-2:               var(--color-accent);
   --chart-3:               var(--color-warning);
@@ -121,8 +125,73 @@
   --sidebar-ring:                  var(--color-primary);
 }
 
+/* ═══════════════════════════════════════════════════════════ */
+/* DARK THEME — Zinc-950 base + Indigo-500 primary              */
+/* ═══════════════════════════════════════════════════════════ */
+.dark {
+  /* ─── Brand Colors ─── */
+  --color-primary:        #22c55e;  /* green-500 — lighter for dark contrast */
+  --color-primary-hover:  #16a34a;  /* green-600 */
+  --color-primary-light:  #14532d;  /* green-900 */
+  --color-primary-dark:   #15803d;
+
+  --color-accent:         #4ade80;  /* green-400 */
+  --color-accent-hover:   #22c55e;
+
+  /* ─── Background ─── */
+  --bg-base:              #09090b;  /* zinc-950 */
+  --bg-surface:           #18181b;  /* zinc-900 */
+  --bg-elevated:          #27272a;  /* zinc-800 */
+  --bg-overlay:           rgba(0, 0, 0, 0.7);
+
+  /* ─── Text ─── */
+  --text-primary:         #fafafa;  /* zinc-50 */
+  --text-secondary:       #a1a1aa;  /* zinc-400 */
+  --text-muted:           #52525b;  /* zinc-600 */
+  --text-inverse:         #09090b;
+
+  /* ─── Borders ─── */
+  --border-default:       #27272a;  /* zinc-800 */
+  --border-subtle:        #18181b;
+  --border-strong:        #3f3f46;  /* zinc-700 */
+
+  /* ─── Shadows (deeper for dark) ─── */
+  --shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md:  0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg:  0 12px 28px rgba(0, 0, 0, 0.6);
+
+  /* ─── shadcn/ui dark tokens ─── */
+  --background: var(--bg-base);
+  --foreground: var(--text-primary);
+  --card:                  var(--bg-surface);
+  --card-foreground:       var(--text-primary);
+  --popover:               #1f1f23;
+  --popover-foreground:    var(--text-primary);
+  --primary:               var(--color-primary);
+  --primary-foreground:    #052e16;
+  --secondary:             var(--bg-elevated);
+  --secondary-foreground:  var(--text-primary);
+  --muted:                 var(--bg-elevated);
+  --muted-foreground:      var(--text-secondary);
+  --accent:                var(--bg-elevated);
+  --accent-foreground:     var(--text-primary);
+  --destructive:           var(--color-danger);
+  --destructive-foreground:#ffffff;
+  --border:                var(--border-default);
+  --input:                 var(--border-default);
+  --ring:                  var(--color-primary);
+  --sidebar:                       var(--bg-surface);
+  --sidebar-foreground:            var(--text-primary);
+  --sidebar-primary:               var(--color-primary);
+  --sidebar-primary-foreground:    #052e16;
+  --sidebar-accent:                var(--bg-elevated);
+  --sidebar-accent-foreground:     var(--text-primary);
+  --sidebar-border:                var(--border-default);
+  --sidebar-ring:                  var(--color-primary);
+}
+
 @theme inline {
-  /* Existing Tailwind v4 mappings */
+  /* Tailwind v4 mappings */
   --color-background:      var(--background);
   --color-foreground:      var(--foreground);
   --font-sans:             var(--font-geist-sans);
@@ -165,17 +234,13 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-
-  /* Brand accent utilities — Donezo green */
-  --color-brand-mint: #0f5132;       /* deep forest — brand text */
-  --color-brand-forest: #0a3d25;     /* darker forest */
-  --color-brand-emerald: #22c55e;    /* vivid accent */
 }
 
 body {
-  background: var(--bg-base);
-  color: var(--text-primary);
+  background: var(--background);
+  color: var(--foreground);
   font-family: var(--font-sans);
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 /* ═══ EDITOR THEME — Dev 3 owns ═══ */

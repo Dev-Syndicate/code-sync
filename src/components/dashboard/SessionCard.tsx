@@ -34,14 +34,14 @@ export function SessionCard({ session }: SessionCardProps) {
       }}
       className={cn(
         'group cursor-pointer p-5 transition-all duration-200',
-        'hover:-translate-y-0.5 hover:border-[#0f5132]/40 hover:shadow-md',
+        'hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
       )}
     >
       <div className="mb-4 flex items-center justify-between">
         <div className="flex min-w-0 items-center gap-2">
           <Circle
-            className="h-2 w-2 shrink-0 animate-pulse fill-[#22c55e] text-[#22c55e]"
+            className="h-2 w-2 shrink-0 animate-pulse fill-emerald-500 text-emerald-500"
             aria-hidden
           />
           <span className="truncate text-sm font-bold text-foreground">
@@ -50,7 +50,7 @@ export function SessionCard({ session }: SessionCardProps) {
         </div>
         <Badge
           variant="secondary"
-          className="border-0 bg-[#dcfce7] font-semibold text-[#0f5132] hover:bg-[#bbf7d0]"
+          className="border-0 bg-emerald-500/10 font-semibold text-emerald-600 hover:bg-emerald-500/15 dark:text-emerald-400"
         >
           Live
         </Badge>

@@ -8,7 +8,6 @@ interface StatTile {
   label: string
   value: number | string
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>
-  accent: 'primary' | 'mint'
 }
 
 interface StatsStripProps {
@@ -25,10 +24,10 @@ export function StatsStrip({
   pinnedCount,
 }: StatsStripProps) {
   const tiles: StatTile[] = [
-    { label: 'Total Repositories', value: repoCount, icon: Book, accent: 'primary' },
-    { label: 'Active Sessions', value: activeSessionCount, icon: Activity, accent: 'mint' },
-    { label: 'Sessions Joined', value: sessionsJoined, icon: Users, accent: 'primary' },
-    { label: 'Pinned Repos', value: pinnedCount, icon: Star, accent: 'mint' },
+    { label: 'Total Repositories', value: repoCount, icon: Book },
+    { label: 'Active Sessions', value: activeSessionCount, icon: Activity },
+    { label: 'Sessions Joined', value: sessionsJoined, icon: Users },
+    { label: 'Pinned Repos', value: pinnedCount, icon: Star },
   ]
 
   return (
@@ -43,34 +42,33 @@ export function StatsStrip({
               'hover:-translate-y-0.5 hover:shadow-md'
             )}
           >
-            {/* Decorative blob — bottom-left */}
+            {/* Decorative blob — bottom-right, theme-aware */}
             <svg
-              className="pointer-events-none absolute -bottom-6 -right-4 h-24 w-24 opacity-60"
+              className="pointer-events-none absolute -bottom-6 -right-4 h-24 w-24 text-primary opacity-[0.08]"
               viewBox="0 0 100 100"
-              fill="none"
+              fill="currentColor"
               aria-hidden
             >
-              <path
-                d="M 20,60 Q 30,40 50,50 T 80,40 Q 90,55 80,75 T 40,80 Q 15,80 20,60 Z"
-                fill={tile.accent === 'mint' ? '#bbf7d0' : '#dcfce7'}
-              />
+              <path d="M 20,60 Q 30,40 50,50 T 80,40 Q 90,55 80,75 T 40,80 Q 15,80 20,60 Z" />
               <path
                 d="M 30,65 Q 40,50 55,55 T 75,50 Q 82,62 72,75 T 45,80 Q 28,78 30,65 Z"
-                fill={tile.accent === 'mint' ? '#86efac' : '#bbf7d0'}
                 opacity="0.7"
               />
             </svg>
 
-            {/* Small green dots cluster */}
-            <div className="pointer-events-none absolute right-4 top-5 flex gap-1" aria-hidden>
-              <span className="h-1 w-1 rounded-full bg-[#0f5132]/60" />
-              <span className="h-1 w-1 rounded-full bg-[#0f5132]/40" />
-              <span className="h-1 w-1 rounded-full bg-[#0f5132]/20" />
+            {/* Small dots cluster */}
+            <div
+              className="pointer-events-none absolute right-4 top-5 flex gap-1"
+              aria-hidden
+            >
+              <span className="h-1 w-1 rounded-full bg-primary/60" />
+              <span className="h-1 w-1 rounded-full bg-primary/40" />
+              <span className="h-1 w-1 rounded-full bg-primary/20" />
             </div>
 
             <div className="relative">
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#0f5132]/8 ring-1 ring-inset ring-[#0f5132]/15">
-                <Icon className="h-[18px] w-[18px] text-[#0f5132]" strokeWidth={2.25} />
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-inset ring-primary/15">
+                <Icon className="h-[18px] w-[18px] text-primary" strokeWidth={2.25} />
               </div>
               <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {tile.label}

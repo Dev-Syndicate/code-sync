@@ -50,7 +50,7 @@ export function RecentSessions({ sessions, max = 5 }: RecentSessionsProps) {
           return (
             <Card
               key={session.id}
-              className="group relative flex min-w-[260px] snap-start flex-col gap-3 p-4 transition-all hover:-translate-y-0.5 hover:border-[#0f5132]/40 hover:shadow-md"
+              className="group relative flex min-w-[260px] snap-start flex-col gap-3 p-4 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
@@ -62,7 +62,7 @@ export function RecentSessions({ sessions, max = 5 }: RecentSessionsProps) {
                   </p>
                 </div>
                 {session.active && (
-                  <span className="shrink-0 rounded-full bg-[#dcfce7] px-2 py-0.5 text-[10px] font-bold text-[#0f5132]">
+                  <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
                     Live
                   </span>
                 )}
