@@ -54,6 +54,7 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
+import { rehydrateSessions } from '@/lib/session/rehydrate'
 import type { GitHubRepo, Session } from '@/types'
 
 export default function DashboardPage() {
@@ -115,7 +116,12 @@ export default function DashboardPage() {
         const json = await res.json()
 
         if (!cancelled && json.success) {
-          const data: Session[] = json.data ?? []
+          // API returns plain JSON — Firestore Timestamps are serialized to
+          // `{_seconds, _nanoseconds}` and lose their `.toDate()` method.
+          // Rehydrate them back into real Timestamp instances so downstream
+          // analytics (SessionAnalytics, RecentSessions, TeamCollaboration)
+          // can call .toDate()/.toMillis() without silently dropping rows.
+          const data: Session[] = rehydrateSessions(json.data ?? [])
           setAllSessions(data)
           setSessions(data)
         }

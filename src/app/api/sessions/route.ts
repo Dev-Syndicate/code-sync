@@ -155,15 +155,17 @@ export async function GET(req: NextRequest) {
 
   try {
     // We intentionally do NOT add `.orderBy('createdAt', 'desc')` here —
-    // combining it with the `active == true` filter would require a composite
-    // index on (active, createdAt desc) which isn't deployed. The result set
-    // is already capped at 50 and then post-filtered to sessions the user is
-    // part of, so sorting in memory is cheap and keeps the dashboard working
-    // without waiting on index deployment.
+    // combining it with filters would require a composite index that isn't
+    // deployed. The result set is capped and then post-filtered/sorted in
+    // memory.
+    //
+    // We also do NOT filter by `active == true` — the dashboard's
+    // SessionAnalytics / RecentSessions show ended sessions from the last 7
+    // days, so excluding them server-side would blank the charts. Instead
+    // we post-filter to sessions the user owns or participated in.
     const snap = await adminDb
       .collection('sessions')
-      .where('active', '==', true)
-      .limit(50)
+      .limit(100)
       .get()
 
     const sessions = snap.docs

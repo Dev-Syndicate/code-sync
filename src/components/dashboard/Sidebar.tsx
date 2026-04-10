@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useSessionStore } from '@/store/sessionStore'
+import { rehydrateSessions } from '@/lib/session/rehydrate'
 import { cn } from '@/lib/utils'
 import type { Session } from '@/types'
 
@@ -45,7 +46,7 @@ export function Sidebar() {
         if (!res.ok) return
         const json = await res.json()
         if (!cancelled && json?.success && Array.isArray(json.data)) {
-          setSessions(json.data as Session[])
+          setSessions(rehydrateSessions(json.data as Session[]))
         }
       } catch (err) {
         console.error('[Sidebar] session fetch failed:', err)
