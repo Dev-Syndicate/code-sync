@@ -13,6 +13,7 @@ import { useCollaboration } from '@/hooks/useCollaboration'
 import { useConnectionStatus } from '@/hooks/useConnectionStatus'
 import { useFileEditorTracking } from '@/hooks/useFileEditorTracking'
 import { useAuth } from '@/hooks/useAuth'
+import { ChatPanel } from '@/components/chat/ChatPanel'
 import { CURSOR_COLORS } from '@/types/session'
 import type { RemoteCursor } from '@/types/editor'
 
@@ -206,15 +207,9 @@ export default function SessionPage({
           </div>
         </div>
 
-        {/* ── Right sidebar: Chat placeholder (Dev 4's territory) ── */}
-        <div className="w-72 shrink-0 border-l border-white/10 bg-[#252526] flex items-center justify-center">
-          <div className="text-center text-white/20 p-4">
-            <div className="text-3xl mb-2">💬</div>
-            <p className="text-xs">Chat panel</p>
-            <p className="text-[10px] mt-1 opacity-60">
-              (Dev 4 will implement this)
-            </p>
-          </div>
+        {/* ── Right sidebar: Chat (Dev 4) ── */}
+        <div className="w-72 shrink-0">
+          <ChatPanel sessionId={sessionId} />
         </div>
       </div>
     </div>
