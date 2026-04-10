@@ -5,7 +5,7 @@
 // 1. Verifies the Firebase ID token via Admin SDK
 // 2. Stores the GitHub accessToken in /users/{uid}/private/tokens
 // 3. Mints a long-lived session cookie via adminAuth.createSessionCookie
-//    and sets it as the HTTP-only `session` cookie that middleware.ts reads.
+//    and sets it as the HTTP-only `session` cookie that proxy.ts reads.
 
 import { type NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'

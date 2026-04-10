@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server'
 // Protected routes that require authentication
 const protectedRoutes = ['/dashboard', '/session']
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const sessionCookie = request.cookies.get('session')
 

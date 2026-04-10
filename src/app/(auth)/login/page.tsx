@@ -1,22 +1,35 @@
 // Dev 1 — Login page
 'use client'
 
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { LoginButton } from '@/components/auth/LoginButton'
+import { syncServerSession } from '@/lib/firebase/auth'
 
 function LoginContent() {
   const { isAuthenticated, loading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const syncedRef = useRef(false)
 
-  // Redirect to dashboard (or original destination) if already authenticated
+  // When the Firebase client reports an authenticated user, we can't just
+  // redirect — the server session cookie may be missing/invalid, which would
+  // bounce us straight back here and cause an infinite loop. Instead, ask
+  // the server to confirm (and repair if possible) the session first.
   useEffect(() => {
-    if (!loading && isAuthenticated) {
-      const redirect = searchParams.get('redirect') ?? '/dashboard'
-      router.replace(redirect)
-    }
+    if (loading || !isAuthenticated || syncedRef.current) return
+    syncedRef.current = true
+
+    void (async () => {
+      const ok = await syncServerSession()
+      if (ok) {
+        const redirect = searchParams.get('redirect') ?? '/dashboard'
+        router.replace(redirect)
+      }
+      // If not ok, syncServerSession signed us out — useAuth will update,
+      // isAuthenticated will become false, and the login button stays visible.
+    })()
   }, [isAuthenticated, loading, router, searchParams])
 
   return (
