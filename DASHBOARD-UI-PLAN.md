@@ -1,173 +1,276 @@
-# Dashboard UI — Comprehensive Overhaul Plan
+# Dashboard UI — Comprehensive Overhaul Plan (shadcn/ui edition)
 
 > **Branch:** `feature/dev2-dashboard`
 > **Owner:** Dev 2
-> **Scope:** `src/app/dashboard/*`, `src/components/dashboard/*` (+ coordinated edits to `src/store/repoStore.ts` and `package.json`)
+> **Substrate:** shadcn/ui + Tailwind v4 + Radix primitives
+> **Scope:** `src/app/dashboard/*`, `src/components/dashboard/*` (+ coordinated edits to `src/components/ui/*`, `src/app/globals.css`, `src/store/repoStore.ts`, and `package.json`)
 
 ---
 
 ## Context
 
-The current dashboard at `src/app/dashboard/page.tsx` is functional but underbuilt for a hackathon-grade product:
+The current dashboard at `src/app/dashboard/page.tsx` is functional but underbuilt:
 
-- **All styling is inline** with hardcoded hex colors (`#1e293b`, `#334155`, `#f1f5f9`) repeated 20+ times across files. A full design-token system already exists in `src/app/globals.css` (`--bg-surface`, `--text-primary`, `--space-*`, `--radius-*`, `--transition-*`) but the dashboard ignores it.
+- **All styling is inline** with hardcoded hex colors (`#1e293b`, `#334155`, `#f1f5f9`) repeated 20+ times. A rich design-token system already exists in `src/app/globals.css` (`--bg-surface`, `--text-primary`, `--space-*`, `--radius-*`) but the dashboard ignores it.
 - **`SessionCard` is defined inline** in `page.tsx` (lines 11–107) instead of being its own component.
-- **Styles are duplicated** across `RepoCard`, `SessionCard`, the header buttons, and empty/error states — no shared `Card` / `Badge` / `Button` primitives.
-- **Accessibility is weak**: clickable `<div>`s instead of buttons, no `:focus-visible` rings, icon-only buttons missing `aria-label`, no keyboard navigation.
-- **Feature gaps**: no sort, no advanced filters, no pinned repos, no stats overview, no quick-jump command palette, no recent-session resume.
+- **No shared primitives** — card styles, button styles, empty/error states are duplicated across `RepoCard`, `SessionCard`, the header.
+- **Accessibility is weak** — clickable `<div>`s instead of buttons, no `:focus-visible` rings, icon-only buttons missing `aria-label`, no keyboard navigation.
+- **Feature gaps** — no sort, no advanced filters, no pinned repos, no stats overview, no command palette, no recent-session resume.
 
-**Direction chosen:** Comprehensive overhaul with **Modern SaaS polish** aesthetic (Linear / Vercel / Raycast), plus all four feature adds: **⌘K command palette**, **sort & advanced filters**, **pinned/favorite repos**, and **stats strip + recent sessions row**.
+**Direction chosen:** comprehensive overhaul with **Modern SaaS polish** (Linear / Vercel / Raycast aesthetic), plus all four feature adds: **⌘K command palette**, **sort & advanced filters**, **pinned/favorite repos**, and **stats strip + recent sessions row**. **UI substrate: shadcn/ui** — not hand-rolled primitives.
 
-**Intended outcome:** a cohesive, refined dashboard that (a) uses the existing design-token system instead of inline hex, (b) exposes a small set of reusable dashboard primitives, (c) looks clearly elevated without being gimmicky, (d) adds the four feature requests, and (e) passes basic a11y + responsive checks. Built in four independently-shippable phases so the work can land incrementally.
+**Why shadcn changes the plan shape:**
 
----
+1. **Phase 1 is "install + theme shadcn" instead of "build primitives".** Less new code, more config.
+2. **Accessibility is mostly free** — shadcn is built on Radix UI, which gives focus management, keyboard nav, ARIA, and screen reader support out of the box. Phase 4 shrinks to "responsive + semantic audit".
+3. **⌘K palette is trivial** — shadcn ships `Command` (built on `cmdk` + Radix). Phase 3.4 drops from "build a custom palette" to "install `command` component + wire data".
 
-## Ownership & Constraints (per `DEV-RULES.md`)
-
-Dev 2 owns all files under `src/app/dashboard/*` and `src/components/dashboard/*`. The following **must not be touched**:
-
-- `src/components/ui/*` — shared, requires group-chat coordination. **Do not put new primitives here.** Instead, put dashboard-local primitives under `src/components/dashboard/ui/`.
-- `src/hooks/useAuth.ts` — contract consumed by dev 3/4. Read-only.
-- `src/app/api/*`, `src/lib/firebase/*`, `src/lib/github/*`, `src/middleware.ts` — other devs.
-- `src/app/layout.tsx` — never edit directly; new providers go through `AppProviders.tsx` (not needed here).
-
-Coordinate before editing:
-
-- `package.json` — adding `cmdk` (a small, stable command-palette library) counts as "YOUR dependencies" per DEV-RULES.md rule, so fine, but announce in group chat.
-- `src/store/repoStore.ts` — not explicitly owned in DEV-RULES.md. Since it's the dashboard's state, Dev 2 should own extensions; flag in group chat if touching.
+**Intended outcome:** a cohesive, refined dashboard that uses shadcn primitives mapped to the existing design tokens, looks clearly elevated, adds the four feature requests, and passes basic a11y + responsive checks. Four independently-shippable phases (plus a Phase 0 setup) so the work can land incrementally.
 
 ---
 
-## Phase 1 — Foundation Refactor (no visible change)
+## Current state (verified)
 
-> Goal: migrate to design tokens and extract shared primitives so Phase 2 can move fast. **Zero intended visual change.**
+- **Tailwind v4** is installed (`tailwindcss: ^4`, `@tailwindcss/postcss: ^4`). Shadcn supports Tailwind v4 via `npx shadcn@latest init`.
+- **`src/app/globals.css`** uses the v4 `@import "tailwindcss"` + `@theme inline` pattern and already defines a rich custom token system: `--color-primary`, `--bg-base/surface/elevated`, `--text-primary/secondary/muted`, `--space-1..16`, `--radius-sm/md/lg`, `--shadow-*`, `--transition-*`, `--z-*`. Two Tailwind-compat aliases already exist: `--background → --bg-base`, `--foreground → --text-primary`.
+- **Shadcn is not yet initialized** — no `components.json`, no `src/lib/utils.ts`, no shadcn-flavored components in `src/components/ui/`.
+- **`src/components/ui/`** currently contains: `Button.tsx`, `Modal.tsx`, `Loader.tsx`, `Toast.tsx`, `ErrorBoundary.tsx` (all hand-rolled, no CVA / Radix), plus `Avatar.tsx` and `Badge.tsx` stubs (TODO-only).
+- **No shadcn-related deps in `package.json`** — no `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `@radix-ui/*`, `cmdk`, `tailwindcss-animate`.
+- **Dashboard files** — `SessionCard` still inline in `page.tsx:11-107`. `RepoCard.tsx`, `RepoList.tsx`, `CreateSession.tsx` all present, inline-styled.
 
-### 1.1 Create dashboard-local UI primitives at `src/components/dashboard/ui/`
+---
 
-| File | Props | Purpose |
-|---|---|---|
-| `Card.tsx` | `hoverable?, interactive?, tone?, children` | Shared surface: background `var(--bg-surface)`, border `var(--bg-elevated)`, radius `var(--radius-lg)`, optional hover lift + gradient accent |
-| `Badge.tsx` | `tone: 'neutral' \| 'success' \| 'info' \| 'warning', children` | Pill: Public/Private, Live, counts, language labels |
-| `Button.tsx` | `variant: 'primary' \| 'secondary' \| 'ghost' \| 'danger', size, leftIcon?, rightIcon?` | Replace every hand-rolled `<button style={{...}}>` in the dashboard. CSS classes for `:hover`, `:focus-visible`, `:active` — no more `onMouseEnter/onMouseLeave` style mutations. |
-| `IconButton.tsx` | `label (required), icon, variant` | For grid/list toggle, close buttons — enforces `aria-label`. |
-| `Input.tsx` | standard input props + `leftIcon?` | Search and form fields, with `:focus-visible` ring |
-| `Select.tsx` | standard select props + `label` | Language/sort filter dropdowns |
-| `EmptyState.tsx` | `icon, title, description, action?` | Used by empty/error states in `RepoList.tsx` |
-| `LanguageDot.tsx` | `language` | Small colored dot, language-aware (maps language → color) |
+## Ownership & Coordination
 
-Style via a colocated `.module.css` per primitive (not inline, not shared `ui/`). Drive everything from CSS variables so Phase 2 visual tweaks become token changes.
+`DEV-RULES.md` has been deleted, but implicit ownership still matters for merge hygiene. For this plan:
 
-### 1.2 Extract `SessionCard`
+- **`src/components/ui/*`** — shadcn's default install target is this directory, so we cannot avoid it. We will **replace** stubs (`Avatar.tsx`, `Badge.tsx`) with shadcn versions, **replace** hand-rolled `Button.tsx` and `Modal.tsx` with shadcn `button` and `dialog`, and **keep** `Loader.tsx`, `Toast.tsx`, `ErrorBoundary.tsx`.
+- **`src/app/globals.css`** — Dev 1's file. Shadcn init appends CSS variables here; we will manually reconcile them to alias existing custom tokens (see Phase 0.3). **Announce in group chat before running `shadcn init`.**
+- **`package.json`** — shadcn init and component installs add many deps. Announce before running.
+- **`src/app/layout.tsx`** — do not edit. No provider needed for shadcn itself.
+- **`src/hooks/useAuth.ts`** — contract. Do not change.
+- **`src/app/api/*`, `src/lib/firebase/*`, `src/lib/github/*`, `src/lib/yjs/*`, `src/proxy.ts`** — not touched.
 
-Move from `src/app/dashboard/page.tsx:11-107` into its own file `src/components/dashboard/SessionCard.tsx`. Use the new `Card` + `Badge` primitives. Add `role="button"`, `tabIndex={0}`, and Enter/Space keyboard handler.
+---
 
-### 1.3 Migrate `RepoCard.tsx` and `RepoList.tsx`
+## Phase 0 — Shadcn Setup (prerequisite, no visible change)
 
-Switch to the new primitives. Replace every hardcoded hex with `var(--*)`. Keep the current visual intent; this phase must be pixel-identical (or extremely close).
+> Goal: get shadcn initialized and mapped to the existing design tokens so Phase 1 can install components cleanly.
 
-### 1.4 Migrate `dashboard/page.tsx` and `dashboard/loading.tsx`
+### 0.1 Install shadcn base dependencies
 
-Header and toolbar switch to new primitives + tokens.
+```bash
+npm install class-variance-authority clsx tailwind-merge lucide-react tailwindcss-animate
+```
 
-### 1.5 Migrate `CreateSession.tsx`
+- `class-variance-authority` — variant/size props for shadcn components
+- `clsx` + `tailwind-merge` — power the `cn()` helper
+- `lucide-react` — icon set (replaces hand-rolled inline SVGs)
+- `tailwindcss-animate` — shadcn's animation utility plugin (needed even on Tailwind v4)
 
-Use `Card`, `Button`, `Select`, and tokens. (Cannot use the shared `Modal.tsx` from `src/components/ui/` without coordination — keep the modal local but token-driven.)
+### 0.2 Run `npx shadcn@latest init`
 
-**Deliverable:** identical-looking dashboard, zero inline hex colors in dashboard files, no inline event-handler style mutations, `SessionCard` in its own file.
+This creates:
+
+- `components.json` at repo root
+- `src/lib/utils.ts` — exports the `cn()` helper
+- Appends a block of CSS variables to `src/app/globals.css`
+
+When prompted, choose:
+
+- **Style:** `default`
+- **Base color:** `slate` (matches existing palette closest)
+- **CSS variables:** `yes`
+- **Tailwind prefix:** none
+- **Import aliases:** `@/components`, `@/lib`, `@/hooks`
+- **React Server Components:** `yes`
+
+### 0.3 Reconcile shadcn tokens with existing custom tokens
+
+After init, **edit `src/app/globals.css`** so shadcn tokens alias the existing custom tokens rather than introducing a parallel color system. Concretely, inside `:root`:
+
+```css
+:root {
+  /* Keep existing custom tokens as source of truth */
+  --bg-base: #0f172a;
+  --bg-surface: #1e293b;
+  /* ...etc (unchanged)... */
+
+  /* Shadcn tokens → map to existing */
+  --background: var(--bg-base);
+  --foreground: var(--text-primary);
+  --card: var(--bg-surface);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-elevated);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--color-primary);
+  --primary-foreground: #ffffff;
+  --secondary: var(--bg-elevated);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--bg-surface);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--color-accent);
+  --accent-foreground: #ffffff;
+  --destructive: var(--color-danger);
+  --destructive-foreground: #ffffff;
+  --border: var(--border-default);
+  --input: var(--border-default);
+  --ring: var(--color-primary);
+  --radius: var(--radius-md);
+}
+```
+
+Do not create a `.dark` selector — the app is dark-only. Leave `.dark` empty or remove it.
+
+### 0.4 Verify
+
+- `npm run lint` → 0 errors
+- `npm run build` → succeeds
+- `npm run dev` → dashboard renders identically (no shadcn components in use yet)
+
+**Deliverable:** shadcn initialized, mapped to existing tokens, zero visible change.
+
+---
+
+## Phase 1 — Install shadcn components + migrate dashboard
+
+> Goal: replace every hand-rolled primitive in the dashboard with a shadcn component. **Zero intended visual change.**
+
+### 1.1 Install shadcn components
+
+```bash
+npx shadcn@latest add button card badge input select dialog command popover dropdown-menu avatar skeleton separator tooltip
+```
+
+This adds ~13 files under `src/components/ui/<component>.tsx` and pulls in `@radix-ui/react-*` packages + `cmdk` for `command`.
+
+### 1.2 Replace pre-existing hand-rolled files
+
+- **Delete** `src/components/ui/Button.tsx` — shadcn's lowercase `button.tsx` replaces it. Grep the repo for `from '@/components/ui/Button'` and update imports to `from '@/components/ui/button'`.
+- **Delete** `src/components/ui/Modal.tsx` — callers use shadcn's `Dialog` (`dialog.tsx`). Grep and update imports.
+- **Delete** `src/components/ui/Avatar.tsx` and `src/components/ui/Badge.tsx` (TODO stubs) — shadcn replacements exist.
+- **Keep** `Loader.tsx`, `Toast.tsx`, `ErrorBoundary.tsx`.
+
+### 1.3 Extract `SessionCard` from page.tsx
+
+Move `src/app/dashboard/page.tsx:11-107` into `src/components/dashboard/SessionCard.tsx`. Built with shadcn `Card` + `Badge` + `Avatar`. Use a `<button>` element (or `Card` with `role="button" tabIndex={0}`) for keyboard support.
+
+### 1.4 Migrate `RepoCard.tsx`
+
+Replace inline-styled card with `Card` + `CardHeader` + `CardContent` + `CardFooter`. Replace inline button with shadcn `Button` (variant `default` for Start Session, variant `ghost` for the future pin action). Language dot stays custom (no shadcn equivalent).
+
+### 1.5 Migrate `RepoList.tsx`
+
+- Loading state: shadcn `Skeleton`
+- Empty/error states: local small component that wraps shadcn `Card` + `Button` (no shadcn `EmptyState` exists)
+
+### 1.6 Migrate `dashboard/page.tsx` + `loading.tsx`
+
+- **Header** — logo lockup stays custom (brand mark). User section uses shadcn `DropdownMenu` (trigger is `Avatar`, items: user name header, Separator, "Sign out").
+- **Toolbar** — search via shadcn `Input`, language filter via shadcn `Select`, grid/list toggle via two shadcn `Button size="icon" variant="ghost"` with `aria-label`.
+- **`loading.tsx`** — skeleton divs → shadcn `Skeleton`.
+
+### 1.7 Migrate `CreateSession.tsx`
+
+Full rewrite using shadcn `Dialog` + `DialogHeader` + `DialogFooter`, `Select` for branch, `Button` for actions. Delete all hand-rolled modal backdrop and animation code.
+
+**Deliverable:** functionally identical dashboard, fully on shadcn, no inline hex colors in dashboard files, `SessionCard` extracted.
 
 ---
 
 ## Phase 2 — Modern SaaS Visual Polish
 
-> Goal: make it look clearly elevated, Linear/Vercel/Raycast-style. No new *features*, just a polished surface on the refactored foundation.
+> Apply Linear/Vercel/Raycast aesthetic on top of the shadcn substrate. No new features, just a refined look.
 
 ### 2.1 Header
 
-File: `src/app/dashboard/page.tsx:168-254`
-
-- Narrower height (56px), sticky with backdrop-blur
-- Logo lockup: gradient square + wordmark (already present, tighten spacing + letter-spacing)
-- Move global search into the header as a ⌘K trigger pill (`⌘K Search...`) in the center — becomes the command palette launcher in Phase 3
-- Right side: condensed user chip (avatar + name + caret dropdown) with Sign out inside the dropdown
-- Divider uses `var(--bg-elevated)` at 50% opacity
+- Narrower height (56px), sticky with `backdrop-blur`
+- Tightened logo lockup (letter-spacing, gap)
+- Center: ⌘K trigger styled as `Button variant="outline"` with a `<kbd>⌘K</kbd>` chip on the right. Opens the command palette (Phase 3.4).
+- Right: `Avatar` inside `DropdownMenu` with items — user name header, Separator, "Sign out"
 
 ### 2.2 Hero section
 
-Replaces the plain "Welcome back" heading:
-
-- Larger display type (32–36px), tighter letter-spacing
-- Tagline below in `var(--text-secondary)`
-- **Stats strip** (Phase 3 feature, placeholder layout here): 4 metric tiles — "Repositories", "Active Sessions", "Sessions Joined", "Pinned". Flex row, `Card` primitive, token-driven.
+- Display type: 32–36px, tight letter-spacing, weight 800
+- Subhead in `text-muted-foreground`
+- **Stats strip placeholder** (4 `Card` tiles in `grid grid-cols-4 gap-4`) — populated in Phase 3.3
 
 ### 2.3 Active Sessions row
 
-If present, renders above repositories as a horizontal scrollable row (not grid) when count > 3, with a "View all" link.
+When sessions exist, render as a horizontal scrollable row of `SessionCard`s (not a grid) with a "View all" link. Overflow-x via `overflow-x-auto snap-x`.
 
 ### 2.4 Repositories section
 
-- **Toolbar:** search (dashed border becomes focus-within outline), sort select, language filter, view toggle — all in a single `Card` toolbar surface
-- **Section title** + count badge with animated number (optional, small CSS)
-- **Grid cards** use a more refined layout:
-  - Top: icon + repo name (truncate), visibility badge pushed right
-  - Middle: 2-line description, muted
-  - Bottom: chip row (language pill, ★ stars, updated) + Start Session primary button
-  - **Hover:** subtle lift (`translateY(-2px)`), soft accent gradient on border (using `box-shadow` ring, not an extra element), 250ms `var(--transition-normal)`
-  - **Focus-visible:** 2px accent ring
+- Toolbar sits inside a shadcn `Card` surface
+- Section title + animated count `Badge`
+- Grid cards use refined layout:
+  - Top row: icon + name (truncate) + visibility `Badge` pushed right
+  - Description: 2 lines, `text-muted-foreground`
+  - Bottom row: chip row (language dot + name, ★ stars, updated) + primary `Button` "Start Session"
+  - Hover: `hover:-translate-y-0.5 hover:ring-2 hover:ring-primary/30 transition`
+  - Focus-visible: shadcn handles via `ring-ring`
 
 ### 2.5 Micro-interactions
 
-- Consolidate keyframes into a dashboard-local CSS module (not `globals.css`, which is Dev 1's): `fadeInUp`, `pulse`, `shimmer`
-- Stagger card mount with `animation-delay` based on index (max 200ms cascade)
-- Skeletons in `loading.tsx` use a `shimmer` gradient sweep instead of plain pulse
+- Stagger card mount with `animation-delay` based on index
+- Skeletons use shadcn's built-in shimmer
+- `tailwindcss-animate` provides `animate-in fade-in slide-in-from-bottom-2` for page entrance
 
-**Deliverable:** same features, visibly elevated dashboard. A reviewer should be able to tell it got a design pass.
+**Deliverable:** same features, visibly elevated dashboard.
 
 ---
 
 ## Phase 3 — Feature Adds
 
-All four selected features, built on the Phase 1+2 foundation.
-
 ### 3.1 Sort & advanced filters
 
-Extend `src/store/repoStore.ts` (coordinate in group chat first):
+Extend `src/store/repoStore.ts`:
 
 - New state: `sortBy: 'recent' | 'stars' | 'name'`, `visibilityFilter: 'all' | 'public' | 'private'`, `hideForks: boolean`
-- New selectors: `filteredRepos` already exists — extend it to apply sort + new filters
-- New UI in the toolbar: a `Select` for sort, a popover `Filter` button that opens a small panel with checkboxes (use a dashboard-local `Popover.tsx` primitive, keep it simple — click-outside-to-close, no portal)
-- Filters persist to `localStorage` via a `persist` middleware wrapper around the Zustand store
+- Extend `filteredRepos` selector to apply sort + new filters
+- Persist to `localStorage` via Zustand's `persist` middleware
+
+**UI:**
+
+- Sort: shadcn `Select` in the toolbar
+- Advanced filters: shadcn `Popover` triggered by a `Button variant="outline"` with filter icon. Popover content: `Checkbox` items for visibility and forks (install with `npx shadcn@latest add checkbox`).
 
 ### 3.2 Pinned / favorite repos
 
-- New Zustand slice or extension on `repoStore`: `pinnedRepoIds: Set<number>`, `togglePinned(id)`
-- Persisted to `localStorage` (not Firestore — avoids Dev 1's `firestore.ts` file)
-- **UI:** star icon on `RepoCard` (top-right, in the header row). Filled when pinned, outline when not. Clicking toggles without bubbling to the card click.
-- `RepoList` sorts pinned repos to the top with a subtle "Pinned" section label when any exist
+- Extend `repoStore.ts`: `pinnedRepoIds: Set<number>`, `togglePinned(id)`
+- Persist to `localStorage` (not Firestore)
+- `RepoCard` gets a pin button top-right — `Button size="icon" variant="ghost"` with lucide `Star` icon (filled when pinned). `stopPropagation` on click so it doesn't bubble to the card.
+- `RepoList` sorts pinned repos to the top with a "Pinned" section label when `pinnedRepoIds.size > 0`
 - Stats strip shows pinned count
 
 ### 3.3 Stats strip + Recent sessions
 
-**Stats strip** (already scaffolded in Phase 2):
+**Stats strip** — four `Card` tiles:
 
 - Repositories: `repos.length`
 - Active Sessions: `activeSessions.length`
-- Sessions Joined: count from `/api/sessions` (all sessions, not just active) — the current fetch already returns them, just needs a second filter
+- Sessions Joined: total count from `/api/sessions`
 - Pinned: `pinnedRepoIds.size`
-- Tiles use `Card` primitive with a large number and label. Subtle language-of-choice icons per tile.
 
-**Recent sessions row:** horizontal scrollable strip below active sessions. Shows last 5 sessions (active or not) the user participated in. Each card: repo name, last-active timestamp, "Resume" button linking to `/session/{id}`. Component: `src/components/dashboard/RecentSessions.tsx`.
+Each tile: big number, label, subtle lucide icon.
+
+**Recent sessions** — new component `src/components/dashboard/RecentSessions.tsx`:
+
+- Horizontal scrollable row of last 5 sessions the user participated in
+- Each card: repo name, last-active timestamp, `Button variant="secondary"` "Resume" linking to `/session/{id}`
 
 ### 3.4 ⌘K command palette
 
-- **Add dependency:** `cmdk` (small, stable, used by Vercel/Linear clones). Add to `package.json` (coordinate).
-- **New component:** `src/components/dashboard/CommandPalette.tsx`
-- **Triggers:** `⌘K` / `Ctrl+K` global listener (mounted in dashboard page), clicking the header search pill, or pressing `/`
-- **Sections:**
-  1. **Repositories** — fuzzy match over `repos`, enter opens the create-session modal
-  2. **Sessions** — active + recent sessions, enter navigates to `/session/{id}`
-  3. **Actions** — "New session", "Toggle grid/list view", "Sign out", "Go to GitHub"
-- **Styling:** dark glass card centered at 15% from top, max-width 560px, token-driven
-- Traps focus, closes on Escape, closes on backdrop click
+Thanks to shadcn `Command` (installed in Phase 1.1), this is mostly data wiring:
+
+- New component: `src/components/dashboard/CommandPalette.tsx`
+- Uses `CommandDialog` (shadcn primitive built on Radix Dialog + cmdk) — handles focus trap, Esc, backdrop close for free
+- Global keyboard listener for `⌘K` / `Ctrl+K` mounted in dashboard page
+- Groups (shadcn `CommandGroup`):
+  1. **Repositories** — fuzzy match over `repos`, Enter opens CreateSession dialog with that repo preselected
+  2. **Sessions** — active + recent sessions, Enter navigates to `/session/{id}`
+  3. **Actions** — "New session", "Toggle view mode", "Sign out", "Open GitHub profile"
+- Each item uses `CommandItem` with lucide icon + label + optional shortcut chip
 
 **Deliverable:** four working features, no backend changes required.
 
@@ -175,27 +278,27 @@ Extend `src/store/repoStore.ts` (coordinate in group chat first):
 
 ## Phase 4 — A11y + Responsive Pass
 
-### 4.1 Semantics & keyboard
+Much smaller than before because Radix/shadcn handles most a11y automatically.
 
-- Audit every `<div onClick>` in the dashboard → convert to `<button>` or add `role="button"`, `tabIndex={0}`, Enter/Space handlers. Primary offenders: `SessionCard`, `RepoCard` clickable container, avatar dropdown trigger.
-- `:focus-visible` outline on every interactive primitive (already baked into Phase 1 primitives — verify).
-- Add `aria-label` to all icon-only buttons (grid/list toggle, close, pin, sort popover trigger).
-- Add `aria-live="polite"` region for loading/error announcements in `RepoList`.
-- `aria-busy` on the grid while loading.
+### 4.1 Semantics verification
+
+- Radix components already provide focus management, keyboard nav, ARIA roles, `aria-label` enforcement for icon buttons, focus trapping in Dialog/Popover/DropdownMenu.
+- **Audit** the dashboard for residual `<div onClick>` patterns (`RepoCard` wrapper, for example) and convert to `<button>` or add `role="button" tabIndex={0}` + Enter/Space handlers.
+- Run Lighthouse accessibility audit; target ≥ 95.
 
 ### 4.2 Responsive
 
-Add a small number of `@media` breakpoints via dashboard-local CSS module (not `globals.css`):
-
-- `max-width: 640px` → single-column grid, hero font shrinks, stats strip becomes 2×2, header search pill hides (use a search icon button that opens palette)
-- `max-width: 900px` → 2-column grid, sticky header loses backdrop blur to save perf
-
-Touch targets ≥ 44×44px on mobile — increase icon-button padding. Test modal on 360×640 viewport — reduce padding, max-height + scroll.
+- Tailwind breakpoint modifiers:
+  - `sm:` → single-column grid, stats strip → 2×2, header ⌘K pill collapses to an icon-only `Button`
+  - `md:` → 2-column grid
+  - `lg:` → 3-column grid (default `auto-fill`)
+- Touch targets ≥ 44×44px (shadcn `size="icon"` already compliant)
+- Dialog on mobile: shadcn `Dialog` is already responsive
 
 ### 4.3 Performance sanity
 
-- `RepoList` with 100+ repos: virtualize? For hackathon: **no**, premature. Use `content-visibility: auto` on off-screen cards instead (zero-cost CSS hint).
-- Debounce search input to 150ms to avoid re-filtering on every keystroke.
+- Debounce search input to 150ms via a small custom hook
+- `content-visibility: auto` on off-screen repo cards via a utility class
 
 **Deliverable:** keyboard-navigable, mobile-usable, screen-reader-sane dashboard.
 
@@ -203,13 +306,13 @@ Touch targets ≥ 44×44px on mobile — increase icon-button padding. Test moda
 
 ## Files
 
-### Modified (Dev 2-owned)
+### Modified (Dev 2 scope)
 
-- `src/app/dashboard/page.tsx` — refactored header/hero/sections, removes inline SessionCard, wires palette + stats
-- `src/app/dashboard/loading.tsx` — new skeleton matching Phase 2 layout
-- `src/components/dashboard/RepoCard.tsx` — uses new primitives, pin button
-- `src/components/dashboard/RepoList.tsx` — new sort, pinned section, EmptyState primitive, content-visibility hint
-- `src/components/dashboard/CreateSession.tsx` — tokens + primitives
+- `src/app/dashboard/page.tsx` — full refactor to shadcn, inline `SessionCard` removed, command palette wired
+- `src/app/dashboard/loading.tsx` — shadcn `Skeleton`
+- `src/components/dashboard/RepoCard.tsx` — shadcn `Card` + `Button` + `Badge` + pin button
+- `src/components/dashboard/RepoList.tsx` — shadcn `Skeleton` for loading, `Card`+`Button` for empty/error
+- `src/components/dashboard/CreateSession.tsx` — shadcn `Dialog` + `Select` + `Button`
 
 ### Created (Dev 2 scope)
 
@@ -217,37 +320,56 @@ Touch targets ≥ 44×44px on mobile — increase icon-button padding. Test moda
 - `src/components/dashboard/RecentSessions.tsx`
 - `src/components/dashboard/StatsStrip.tsx`
 - `src/components/dashboard/CommandPalette.tsx`
-- `src/components/dashboard/ui/Card.tsx` + `.module.css`
-- `src/components/dashboard/ui/Badge.tsx` + `.module.css`
-- `src/components/dashboard/ui/Button.tsx` + `.module.css`
-- `src/components/dashboard/ui/IconButton.tsx` + `.module.css`
-- `src/components/dashboard/ui/Input.tsx` + `.module.css`
-- `src/components/dashboard/ui/Select.tsx` + `.module.css`
-- `src/components/dashboard/ui/EmptyState.tsx` + `.module.css`
-- `src/components/dashboard/ui/LanguageDot.tsx`
-- `src/components/dashboard/ui/Popover.tsx` + `.module.css`
 
 ### Modified (requires coordination — announce in group chat)
 
-- `src/store/repoStore.ts` — adds `sortBy`, `visibilityFilter`, `hideForks`, `pinnedRepoIds`, `togglePinned`, `localStorage` persistence. Check ownership first; `DEV-RULES.md` doesn't name an owner for stores, so Dev 2 should claim it.
-- `package.json` — adds `cmdk` dep.
+- `src/app/globals.css` — shadcn init appends a block; manually reconcile to map shadcn tokens → existing custom tokens (Phase 0.3)
+- `package.json` — adds `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tailwindcss-animate`, plus ~10 `@radix-ui/react-*` packages, plus `cmdk`
+- `src/store/repoStore.ts` — adds sort/filter state, `pinnedRepoIds`, `persist` middleware wrapping
+
+### Created by shadcn (in shared `src/components/ui/`)
+
+- `src/components/ui/button.tsx` (replaces hand-rolled `Button.tsx`)
+- `src/components/ui/card.tsx`
+- `src/components/ui/badge.tsx` (replaces stub `Badge.tsx`)
+- `src/components/ui/input.tsx`
+- `src/components/ui/select.tsx`
+- `src/components/ui/dialog.tsx` (replaces hand-rolled `Modal.tsx`)
+- `src/components/ui/command.tsx`
+- `src/components/ui/popover.tsx`
+- `src/components/ui/dropdown-menu.tsx`
+- `src/components/ui/avatar.tsx` (replaces stub `Avatar.tsx`)
+- `src/components/ui/skeleton.tsx`
+- `src/components/ui/separator.tsx`
+- `src/components/ui/tooltip.tsx`
+- `src/components/ui/checkbox.tsx` (for filters popover)
+- `src/lib/utils.ts` (exports `cn()`)
+- `components.json` (repo root)
+
+### Deleted
+
+- `src/components/ui/Button.tsx` (hand-rolled — replaced by `button.tsx`)
+- `src/components/ui/Modal.tsx` (hand-rolled — replaced by `dialog.tsx`)
+- `src/components/ui/Avatar.tsx` (stub — replaced by `avatar.tsx`)
+- `src/components/ui/Badge.tsx` (stub — replaced by `badge.tsx`)
 
 ### Not touched
 
-- `src/components/ui/*` (shared, Dev 1 or coordination required)
-- `src/hooks/useAuth.ts` (contract)
-- `src/app/globals.css` (Dev 1 owned; everything new goes through existing tokens or dashboard-local CSS modules)
-- Any `src/app/api/*`, `src/lib/firebase/*`, `src/lib/github/*`, `src/lib/yjs/*`
+- `src/components/ui/Loader.tsx`, `Toast.tsx`, `ErrorBoundary.tsx`
+- `src/hooks/useAuth.ts`
+- `src/app/api/*`, `src/lib/firebase/*`, `src/lib/github/*`, `src/lib/yjs/*`, `src/proxy.ts`
+- `src/app/layout.tsx`
+- `src/app/session/*`, `src/components/editor/*`, `src/components/session/*`, `src/components/chat/*`
 
 ---
 
 ## Reuse (don't re-invent)
 
-- **CSS variables** in `src/app/globals.css`: `--bg-base`, `--bg-surface`, `--bg-elevated`, `--text-primary`, `--text-secondary`, `--text-muted`, `--color-primary`, `--color-accent`, `--color-danger`, `--color-success`, `--space-1..16`, `--radius-sm/md/lg/full`, `--shadow-*`, `--transition-fast/normal/slow`, `--z-*`. Already defined; use them everywhere.
-- **`useAuth`** at `src/hooks/useAuth.ts`: read `user`, call `logout`. Do not alter.
-- **`useRepos`** at `src/hooks/useRepos.ts`: extend return with sort/filter setters (or read directly from `repoStore`).
-- **`useSessionStore`** at `src/store/sessionStore.ts`: already used by page.tsx for sessions — reuse for StatsStrip and RecentSessions.
-- **Toast store** at `src/store/toastStore.ts` — currently unused by dashboard. Wire up for: pin toggled, session created, filter applied (optional), command palette action executed.
+- **Existing CSS variables in `globals.css`** — kept as source of truth; shadcn tokens alias to them
+- **`useAuth()`** at `src/hooks/useAuth.ts` — consumed as-is, no contract change
+- **`useSessionStore`** at `src/store/sessionStore.ts` — consumed by `StatsStrip`, `RecentSessions`, `CommandPalette`
+- **Toast store** at `src/store/toastStore.ts` — currently unused by dashboard; wire up for pin-toggle, session-creation, command-palette-action feedback
+- **`GitHubRepo` type** at `src/types/github.ts` — powers all repo display code
 
 ---
 
@@ -255,32 +377,32 @@ Touch targets ≥ 44×44px on mobile — increase icon-button padding. Test moda
 
 After each phase:
 
-1. `npm run lint` — flat config, must pass (DEV-RULES rule 4).
-2. `npm run build` — catches type errors and Next.js 16 App Router issues.
-3. `npm run dev` — manual smoke test:
-   - **Phase 1:** dashboard looks identical to current. No console errors. Sign out still works.
-   - **Phase 2:** dashboard visibly elevated. Hover states feel smooth. Skeletons animate. Resize to 640px — still usable.
+1. `npm run lint` — 0 errors (existing warnings OK)
+2. `npm run build` — succeeds
+3. `npm run dev` — manual smoke:
+   - **Phase 0:** dashboard looks identical. No console errors. Shadcn init applied cleanly.
+   - **Phase 1:** dashboard looks (nearly) identical but is fully on shadcn. Buttons click, Dialogs open/close, Skeletons shimmer, DropdownMenu sign-out works. Zero hand-rolled modal or button in dashboard code.
+   - **Phase 2:** visibly elevated. Hover lifts feel smooth. 640px width — still usable.
    - **Phase 3:**
-     - Click a language filter + sort → repos reorder instantly, persists on reload.
-     - Click the star icon on a repo → it pins to top; reload → still pinned.
-     - Stats strip numbers match repo count and session count.
-     - `⌘K` (or `Ctrl+K`) → palette opens, fuzzy matches, arrow keys navigate, Enter executes, Escape closes.
-     - Recent sessions row renders and "Resume" navigates correctly.
+     - Sort/filter: reorder instant, persists across reload
+     - Pin star: fills on click, pinned repos rise to top, persists across reload
+     - Stats tiles: numbers match data
+     - ⌘K: palette opens, fuzzy matches, arrow keys + Enter work, Escape closes, clicking a repo opens CreateSession
+     - Recent sessions: horizontal strip, Resume navigates correctly
    - **Phase 4:**
-     - Keyboard only: Tab through the whole page, visible focus rings on every interactive element, Enter/Space activates cards, Escape closes palette/modal.
-     - Chrome DevTools mobile emulation (iPhone 12): layout holds, nothing overflows, modal usable.
-     - Chrome a11y audit (Lighthouse): score ≥ 95 on Accessibility.
+     - Keyboard only: Tab through every interactive element, visible focus rings, Enter/Space activate, Escape closes dialogs
+     - DevTools mobile (iPhone 12): layout holds, dialog usable
+     - Lighthouse Accessibility ≥ 95
 
-**End-to-end session test:** sign in → land on dashboard → palette → pick repo → CreateSession modal → create session → navigate to `/session/[id]`. All paths unchanged, just prettier.
+**End-to-end:** sign in → dashboard → ⌘K → select repo → CreateSession dialog → create session → `/session/[id]`. All paths unchanged, prettier + more accessible.
 
 ---
 
 ## Out of scope
 
-- Light theme / theme toggle (would require touching `globals.css` → Dev 1 territory)
-- Backend changes (Dev 4)
-- Editor UI, chat UI, auth UI
+- Light theme / theme toggle (would require filling out `.dark` variants; app is dark-only)
+- Migrating `Toast.tsx` → `sonner` (optional; can be done as a separate small task)
+- Backend changes
+- Editor, chat, auth, session room UI
 - Virtualized repo list (premature)
-- Internationalization
-- Analytics / telemetry
-- Unit tests (no test runner configured in the repo per `CLAUDE.md`)
+- Unit tests (no test runner configured per `CLAUDE.md`)
