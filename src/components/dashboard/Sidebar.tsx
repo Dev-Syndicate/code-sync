@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  Activity,
   Code2,
   HelpCircle,
   LayoutDashboard,
@@ -27,7 +26,6 @@ export function Sidebar() {
   const { logout } = useAuth()
 
   const isActive = (href: string) => {
-    if (href.startsWith('#')) return false
     if (href === '/dashboard') return pathname === '/dashboard'
     return pathname === href || pathname.startsWith(`${href}/`)
   }
@@ -88,21 +86,17 @@ export function Sidebar() {
         {secondaryNav.map((item) => {
           const Icon = item.icon
           const active = isActive(item.href)
-          const isAnchor = item.href.startsWith('#')
-          const commonClasses = cn(
-            'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
-            active
-              ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/25'
-              : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-          )
-
-          return isAnchor ? (
-            <a key={item.label} href={item.href} className={commonClasses}>
-              <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
-              {item.label}
-            </a>
-          ) : (
-            <Link key={item.label} href={item.href} className={commonClasses}>
+          return (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={cn(
+                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+                active
+                  ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/25'
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+              )}
+            >
               <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
               {item.label}
             </Link>
@@ -117,31 +111,6 @@ export function Sidebar() {
           Logout
         </button>
       </nav>
-
-      {/* Promo card */}
-      <div className="mt-auto">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-900 p-5 text-white">
-          <div
-            className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-white/10 blur-xl"
-            aria-hidden
-          />
-          <div className="relative">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
-              <Activity className="h-5 w-5" strokeWidth={2.5} />
-            </div>
-            <p className="mb-1 text-sm font-bold">Live Collaboration</p>
-            <p className="mb-3 text-[11px] leading-relaxed text-white/75">
-              Real-time coding with your team, powered by GitHub.
-            </p>
-            <Link
-              href="/dashboard/help"
-              className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-emerald-800 transition-colors hover:bg-white/90"
-            >
-              Learn more
-            </Link>
-          </div>
-        </div>
-      </div>
     </aside>
   )
 }
