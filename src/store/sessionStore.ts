@@ -6,6 +6,7 @@ interface SessionStore {
   currentSession: Session | null
   loading: boolean
   error: string | null
+  lastSyncedAt: number | null
 
   // Actions
   setSessions: (sessions: Session[]) => void
@@ -22,8 +23,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   currentSession: null,
   loading: false,
   error: null,
+  lastSyncedAt: null,
 
-  setSessions: (sessions) => set({ sessions }),
+  setSessions: (sessions) => set({ sessions, lastSyncedAt: Date.now() }),
 
   setCurrentSession: (currentSession) => set({ currentSession }),
 

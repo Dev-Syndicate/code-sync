@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  Activity,
   Code2,
   HelpCircle,
   LayoutDashboard,
@@ -12,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
+import { SystemStatusCard } from '@/components/dashboard/SystemStatusCard'
 
 const primaryNav = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
@@ -19,7 +19,7 @@ const primaryNav = [
 
 const secondaryNav = [
   { label: 'Settings', icon: Settings, href: '/dashboard/profile' },
-  { label: 'Help', icon: HelpCircle, href: '#help' },
+  { label: 'Help', icon: HelpCircle, href: '/dashboard/help' },
 ]
 
 export function Sidebar() {
@@ -118,31 +118,9 @@ export function Sidebar() {
         </button>
       </nav>
 
-      {/* Promo card */}
+      {/* System status card */}
       <div className="mt-auto">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-900 p-5 text-white">
-          <div
-            className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-white/10 blur-xl"
-            aria-hidden
-          />
-          <div className="relative">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
-              <Activity className="h-5 w-5" strokeWidth={2.5} />
-            </div>
-            <p className="mb-1 text-sm font-bold">Live Collaboration</p>
-            <p className="mb-3 text-[11px] leading-relaxed text-white/75">
-              Real-time coding with your team, powered by GitHub.
-            </p>
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-emerald-800 transition-colors hover:bg-white/90"
-            >
-              Learn more
-            </a>
-          </div>
-        </div>
+        <SystemStatusCard />
       </div>
     </aside>
   )
