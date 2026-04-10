@@ -1,49 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useRepos } from '@/hooks/useRepos'
 import { useSessionStore } from '@/store/sessionStore'
 import { RepoList } from '@/components/dashboard/RepoList'
 import { CreateSession } from '@/components/dashboard/CreateSession'
 import type { GitHubRepo, Session } from '@/types'
-import { Timestamp } from 'firebase/firestore'
-
-// ── Mock active sessions for display ──
-// TODO: REMOVE MOCK — replace with real Firestore query when ready
-const MOCK_SESSIONS: Session[] = [
-  {
-    id: 'session-abc-123',
-    repo: 'code-sync',
-    repoOwner: 'devuser',
-    repoUrl: 'https://github.com/devuser/code-sync',
-    branch: 'main',
-    owner: 'owner-uid-123',
-    participants: {
-      'owner-uid-123': {
-        username: 'devuser',
-        avatar: 'https://avatars.githubusercontent.com/u/1?v=4',
-        color: '#3b82f6',
-        joinedAt: Timestamp.now(),
-      },
-      'collab-uid-456': {
-        username: 'collaborator1',
-        avatar: 'https://avatars.githubusercontent.com/u/2?v=4',
-        color: '#22c55e',
-        joinedAt: Timestamp.now(),
-      },
-    },
-    files: [
-      { path: 'src/index.ts', language: 'typescript', sha: 'abc' },
-      { path: 'src/app.tsx', language: 'typescriptreact', sha: 'def' },
-    ],
-    active: true,
-    maxParticipants: 4,
-    createdAt: Timestamp.now(),
-    closedAt: null,
-    lastDraftAt: null,
-  },
-]
 
 // ── Active session card ──
 function SessionCard({ session }: { session: Session }) {
@@ -144,7 +107,7 @@ function SessionCard({ session }: { session: Session }) {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const {
     repos,
     loading,
@@ -159,11 +122,41 @@ export default function DashboardPage() {
     refetch,
   } = useRepos()
 
+  const { sessions, setSessions, setLoading: setSessionsLoading } = useSessionStore()
   const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [sessionsLoading, setLocalSessionsLoading] = useState(true)
 
-  // TODO: Replace with real session fetch from Firestore
-  const activeSessions = MOCK_SESSIONS
+  // Fetch active sessions from the real API
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchSessions() {
+      setLocalSessionsLoading(true)
+      try {
+        const res = await fetch('/api/sessions')
+        const json = await res.json()
+
+        if (!cancelled && json.success) {
+          setSessions(json.data ?? [])
+        }
+      } catch (err) {
+        console.error('[DashboardPage] Failed to fetch sessions:', err)
+      } finally {
+        if (!cancelled) {
+          setLocalSessionsLoading(false)
+        }
+      }
+    }
+
+    fetchSessions()
+
+    return () => {
+      cancelled = true
+    }
+  }, [setSessions])
+
+  const activeSessions = sessions.filter((s) => s.active)
 
   function handleStartSession(repo: GitHubRepo) {
     setSelectedRepo(repo)
@@ -207,30 +200,56 @@ export default function DashboardPage() {
           </span>
         </div>
 
-        {/* User avatar */}
+        {/* User info + logout */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {user ? (
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '14px',
-              fontWeight: 700,
-              color: '#fff',
-              cursor: 'pointer',
-            }}>
-              {user.username?.charAt(0).toUpperCase() ?? 'U'}
-            </div>
-          ) : (
-            <div style={{
-              width: '36px', height: '36px', borderRadius: '50%',
-              background: '#334155',
-            }} />
+          {user && (
+            <>
+              <span style={{ color: '#94a3b8', fontSize: '13px' }}>
+                {user.username}
+              </span>
+              <button
+                onClick={logout}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #334155',
+                  color: '#94a3b8',
+                  borderRadius: '6px',
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 200ms',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#ef4444'
+                  e.currentTarget.style.color = '#ef4444'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#334155'
+                  e.currentTarget.style.color = '#94a3b8'
+                }}
+              >
+                Sign out
+              </button>
+            </>
           )}
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            background: user?.avatar
+              ? `url(${user.avatar}) center/cover`
+              : 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '14px',
+            fontWeight: 700,
+            color: '#fff',
+            cursor: 'pointer',
+            overflow: 'hidden',
+          }}>
+            {!user?.avatar && (user?.username?.charAt(0).toUpperCase() ?? 'U')}
+          </div>
         </div>
       </header>
 
@@ -256,7 +275,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Active Sessions Section ── */}
-        {activeSessions.length > 0 && (
+        {!sessionsLoading && activeSessions.length > 0 && (
           <div style={{ marginBottom: '36px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#f1f5f9', margin: 0 }}>
