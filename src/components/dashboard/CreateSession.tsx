@@ -2,6 +2,26 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Book, Loader2, Play } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Card } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 import type { GitHubRepo } from '@/types'
 import { createSession } from '@/lib/session/create'
 import { useAuth } from '@/hooks/useAuth'
@@ -26,8 +46,6 @@ export function CreateSession({ repo, isOpen, onClose }: CreateSessionProps) {
   // Mock branches — replaced when Dev 4's branch API is ready
   const branches = [repo.default_branch, 'develop', 'feature/dev1-auth', 'feature/dev2-dashboard']
 
-  if (!isOpen) return null
-
   async function handleCreate() {
     setIsCreating(true)
     setError(null)
@@ -50,7 +68,7 @@ export function CreateSession({ repo, isOpen, onClose }: CreateSessionProps) {
       } else {
         setError('Failed to create session. Please try again.')
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred.')
     } finally {
       setIsCreating(false)
@@ -58,138 +76,62 @@ export function CreateSession({ repo, isOpen, onClose }: CreateSessionProps) {
   }
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0, 0, 0, 0.6)',
-          backdropFilter: 'blur(4px)',
-          zIndex: 100,
-          animation: 'fadeIn 200ms ease',
-        }}
-      />
-
-      {/* Modal */}
-      <div
-        style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          background: '#1e293b',
-          border: '1px solid #334155',
-          borderRadius: '16px',
-          padding: '28px',
-          width: '90%',
-          maxWidth: '480px',
-          zIndex: 101,
-          boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-          animation: 'slideUp 250ms ease',
-        }}
-      >
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-          <h2 style={{ color: '#f1f5f9', fontSize: '18px', fontWeight: 700, margin: 0 }}>
-            Create Coding Session
-          </h2>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#94a3b8',
-              cursor: 'pointer',
-              padding: '4px',
-              borderRadius: '6px',
-              display: 'flex',
-              transition: 'color 200ms',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#f1f5f9')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && !isCreating && onClose()}>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle>Create Coding Session</DialogTitle>
+          <DialogDescription>
+            Start a new collaborative session for this repository.
+          </DialogDescription>
+        </DialogHeader>
 
         {/* Repo info card */}
-        <div style={{
-          background: '#0f172a',
-          border: '1px solid #334155',
-          borderRadius: '10px',
-          padding: '14px 16px',
-          marginBottom: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-        }}>
-          <svg width="20" height="20" viewBox="0 0 16 16" fill="#60a5fa">
-            <path d="M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 010-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1h-8a1 1 0 00-1 1v6.708A2.486 2.486 0 014.5 9h8V1.5z" />
-          </svg>
-          <div>
-            <p style={{ color: '#f1f5f9', fontSize: '14px', fontWeight: 600, margin: 0 }}>
+        <Card className="flex items-center gap-3 p-3.5 px-4 bg-background/60">
+          <Book className="h-5 w-5 shrink-0 text-[var(--color-brand-mint)]" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-foreground">
               {repo.owner.login}/{repo.name}
             </p>
-            <p style={{ color: '#64748b', fontSize: '12px', margin: '2px 0 0 0' }}>
+            <p className="truncate text-xs text-muted-foreground">
               {repo.description || 'No description'}
             </p>
           </div>
+        </Card>
+
+        {/* Branch */}
+        <div className="space-y-2">
+          <Label htmlFor="branch-select">Branch</Label>
+          <Select value={branch} onValueChange={setBranch}>
+            <SelectTrigger id="branch-select" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {branches.map((b) => (
+                <SelectItem key={b} value={b}>
+                  {b}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        {/* Branch selector */}
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', color: '#94a3b8', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
-            Branch
-          </label>
-          <select
-            value={branch}
-            onChange={(e) => setBranch(e.target.value)}
-            style={{
-              width: '100%',
-              background: '#0f172a',
-              color: '#f1f5f9',
-              border: '1px solid #334155',
-              borderRadius: '8px',
-              padding: '10px 12px',
-              fontSize: '14px',
-              outline: 'none',
-              cursor: 'pointer',
-              appearance: 'none',
-            }}
-          >
-            {branches.map((b) => (
-              <option key={b} value={b}>{b}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Max participants */}
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ display: 'block', color: '#94a3b8', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
-            Max Participants
-          </label>
-          <div style={{ display: 'flex', gap: '8px' }}>
+        {/* Max Participants */}
+        <div className="space-y-2">
+          <Label>Max Participants</Label>
+          <div className="flex gap-2">
             {[2, 3, 4].map((n) => (
               <button
                 key={n}
+                type="button"
                 onClick={() => setMaxParticipants(n)}
-                style={{
-                  flex: 1,
-                  padding: '10px',
-                  borderRadius: '8px',
-                  border: maxParticipants === n ? '2px solid #3b82f6' : '1px solid #334155',
-                  background: maxParticipants === n ? 'rgba(59, 130, 246, 0.15)' : '#0f172a',
-                  color: maxParticipants === n ? '#60a5fa' : '#94a3b8',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 200ms ease',
-                }}
+                aria-pressed={maxParticipants === n}
+                className={cn(
+                  'flex-1 rounded-md py-2.5 text-sm font-semibold transition-all',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                  maxParticipants === n
+                    ? 'border-2 border-primary bg-primary/15 text-[var(--color-brand-mint)]'
+                    : 'border border-border bg-background text-muted-foreground hover:text-foreground'
+                )}
               >
                 {n}
               </button>
@@ -197,105 +139,42 @@ export function CreateSession({ repo, isOpen, onClose }: CreateSessionProps) {
           </div>
         </div>
 
-        {/* Error message */}
+        {/* Error */}
         {error && (
-          <div style={{
-            background: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            borderRadius: '8px',
-            padding: '10px 14px',
-            marginBottom: '16px',
-            color: '#fca5a5',
-            fontSize: '13px',
-          }}>
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs text-destructive">
             {error}
           </div>
         )}
 
-        {/* Action buttons */}
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button
+        <DialogFooter className="gap-2 sm:gap-2">
+          <Button
+            type="button"
+            variant="outline"
             onClick={onClose}
             disabled={isCreating}
-            style={{
-              flex: 1,
-              padding: '12px',
-              borderRadius: '10px',
-              border: '1px solid #334155',
-              background: 'transparent',
-              color: '#94a3b8',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: isCreating ? 'not-allowed' : 'pointer',
-              transition: 'all 200ms ease',
-              opacity: isCreating ? 0.5 : 1,
-            }}
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
             onClick={handleCreate}
             disabled={isCreating}
-            style={{
-              flex: 2,
-              padding: '12px',
-              borderRadius: '10px',
-              border: 'none',
-              background: isCreating
-                ? '#1e40af'
-                : 'linear-gradient(135deg, #2563eb, #3b82f6)',
-              color: '#ffffff',
-              fontSize: '14px',
-              fontWeight: 700,
-              cursor: isCreating ? 'not-allowed' : 'pointer',
-              transition: 'all 200ms ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-            }}
+            className="gap-1.5 sm:flex-[2]"
           >
             {isCreating ? (
               <>
-                <span style={{
-                  width: '16px',
-                  height: '16px',
-                  border: '2px solid rgba(255,255,255,0.3)',
-                  borderTopColor: '#ffffff',
-                  borderRadius: '50%',
-                  animation: 'spin 0.6s linear infinite',
-                  display: 'inline-block',
-                }} />
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                 Creating...
               </>
             ) : (
               <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                  <polyline points="10 17 15 12 10 7" />
-                  <line x1="15" y1="12" x2="3" y2="12" />
-                </svg>
+                <Play className="h-4 w-4 fill-current" aria-hidden />
                 Start Session
               </>
             )}
-          </button>
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translate(-50%, -45%); }
-          to { opacity: 1; transform: translate(-50%, -50%); }
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
-    </>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

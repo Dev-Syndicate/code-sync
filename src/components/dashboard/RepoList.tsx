@@ -1,5 +1,10 @@
 'use client'
 
+import { AlertCircle, Book, Star } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import type { GitHubRepo } from '@/types'
 import { RepoCard } from './RepoCard'
 
@@ -8,53 +13,54 @@ interface RepoListProps {
   loading: boolean
   error: string | null
   viewMode: 'grid' | 'list'
+  pinnedRepoIds: number[]
   onStartSession: (repo: GitHubRepo) => void
+  onTogglePin: (id: number) => void
   onRetry: () => void
 }
 
 function SkeletonCard({ viewMode }: { viewMode: 'grid' | 'list' }) {
+  const isGrid = viewMode === 'grid'
   return (
-    <div
-      style={{
-        background: '#1e293b',
-        border: '1px solid #334155',
-        borderRadius: '12px',
-        padding: viewMode === 'grid' ? '20px' : '16px 20px',
-        display: 'flex',
-        flexDirection: viewMode === 'grid' ? 'column' : 'row',
-        gap: viewMode === 'grid' ? '14px' : '20px',
-        alignItems: viewMode === 'grid' ? 'stretch' : 'center',
-        animation: 'pulse 2s ease-in-out infinite',
-      }}
+    <Card
+      className={cn(
+        isGrid ? 'p-5 flex flex-col gap-3.5' : 'p-4 px-5 flex flex-row items-center gap-5'
+      )}
     >
-      <div style={{ flex: 1 }}>
-        <div style={{ height: '16px', width: '60%', background: '#334155', borderRadius: '4px', marginBottom: '10px' }} />
-        <div style={{ height: '12px', width: '90%', background: '#334155', borderRadius: '4px', marginBottom: '8px' }} />
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <div style={{ height: '10px', width: '60px', background: '#334155', borderRadius: '4px' }} />
-          <div style={{ height: '10px', width: '40px', background: '#334155', borderRadius: '4px' }} />
+      <div className="flex-1 space-y-2.5">
+        <Skeleton className="h-4 w-3/5" />
+        <Skeleton className="h-3 w-[90%]" />
+        <div className="flex gap-3 pt-1">
+          <Skeleton className="h-2.5 w-16" />
+          <Skeleton className="h-2.5 w-10" />
         </div>
       </div>
-      {viewMode === 'grid' && (
-        <div style={{ height: '36px', background: '#334155', borderRadius: '8px' }} />
-      )}
-    </div>
+      {isGrid && <Skeleton className="h-9 w-full rounded-md" />}
+    </Card>
   )
 }
 
-export function RepoList({ repos, loading, error, viewMode, onStartSession, onRetry }: RepoListProps) {
+export function RepoList({
+  repos,
+  loading,
+  error,
+  viewMode,
+  pinnedRepoIds,
+  onStartSession,
+  onTogglePin,
+  onRetry,
+}: RepoListProps) {
+  const gridClasses = cn(
+    'grid gap-4',
+    viewMode === 'grid'
+      ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fill,minmax(320px,1fr))]'
+      : 'grid-cols-1'
+  )
+
   // Loading state
   if (loading) {
     return (
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: viewMode === 'grid'
-            ? 'repeat(auto-fill, minmax(320px, 1fr))'
-            : '1fr',
-          gap: '16px',
-        }}
-      >
+      <div className={gridClasses} aria-busy="true" aria-live="polite">
         {Array.from({ length: 6 }).map((_, i) => (
           <SkeletonCard key={i} viewMode={viewMode} />
         ))}
@@ -65,54 +71,15 @@ export function RepoList({ repos, loading, error, viewMode, onStartSession, onRe
   // Error state
   if (error) {
     return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '60px 20px',
-        textAlign: 'center',
-      }}>
-        <div style={{
-          width: '56px',
-          height: '56px',
-          borderRadius: '50%',
-          background: 'rgba(239, 68, 68, 0.15)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: '16px',
-        }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
+      <div className="flex flex-col items-center justify-center py-16 px-5 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive/15 mb-4">
+          <AlertCircle className="h-6 w-6 text-destructive" aria-hidden />
         </div>
-        <p style={{ color: '#f1f5f9', fontSize: '16px', fontWeight: 600, marginBottom: '6px' }}>
+        <p className="text-base font-semibold text-foreground mb-1.5">
           Failed to load repositories
         </p>
-        <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px' }}>
-          {error}
-        </p>
-        <button
-          onClick={onRetry}
-          style={{
-            background: '#2563eb',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '10px 24px',
-            fontSize: '14px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'background 200ms ease',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = '#1d4ed8')}
-          onMouseLeave={(e) => (e.currentTarget.style.background = '#2563eb')}
-        >
-          Try Again
-        </button>
+        <p className="text-sm text-muted-foreground mb-5">{error}</p>
+        <Button onClick={onRetry}>Try Again</Button>
       </div>
     )
   }
@@ -120,57 +87,73 @@ export function RepoList({ repos, loading, error, viewMode, onStartSession, onRe
   // Empty state
   if (repos.length === 0) {
     return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '60px 20px',
-        textAlign: 'center',
-      }}>
-        <div style={{
-          width: '56px',
-          height: '56px',
-          borderRadius: '50%',
-          background: 'rgba(148, 163, 184, 0.1)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: '16px',
-        }}>
-          <svg width="24" height="24" viewBox="0 0 16 16" fill="#475569">
-            <path d="M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 010-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1h-8a1 1 0 00-1 1v6.708A2.486 2.486 0 014.5 9h8V1.5z" />
-          </svg>
+      <div className="flex flex-col items-center justify-center py-16 px-5 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted mb-4">
+          <Book className="h-6 w-6 text-muted-foreground" aria-hidden />
         </div>
-        <p style={{ color: '#f1f5f9', fontSize: '16px', fontWeight: 600, marginBottom: '6px' }}>
+        <p className="text-base font-semibold text-foreground mb-1.5">
           No repositories found
         </p>
-        <p style={{ color: '#94a3b8', fontSize: '14px' }}>
+        <p className="text-sm text-muted-foreground">
           Try adjusting your search or filter criteria
         </p>
       </div>
     )
   }
 
-  // Repo list/grid
+  // Split pinned / unpinned (repos is already sorted with pinned first by the store)
+  const pinnedSet = new Set(pinnedRepoIds)
+  const pinned = repos.filter((r) => pinnedSet.has(r.id))
+  const unpinned = repos.filter((r) => !pinnedSet.has(r.id))
+
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: viewMode === 'grid'
-          ? 'repeat(auto-fill, minmax(320px, 1fr))'
-          : '1fr',
-        gap: '16px',
-      }}
-    >
-      {repos.map((repo) => (
-        <RepoCard
-          key={repo.id}
-          repo={repo}
-          viewMode={viewMode}
-          onStartSession={onStartSession}
-        />
-      ))}
+    <div className="space-y-6">
+      {pinned.length > 0 && (
+        <div>
+          <div className="mb-3 flex items-center gap-2">
+            <Star className="h-3.5 w-3.5 fill-primary text-primary" aria-hidden />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Pinned
+            </h3>
+          </div>
+          <div className={gridClasses}>
+            {pinned.map((repo) => (
+              <RepoCard
+                key={repo.id}
+                repo={repo}
+                viewMode={viewMode}
+                isPinned
+                onStartSession={onStartSession}
+                onTogglePin={onTogglePin}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {unpinned.length > 0 && (
+        <div>
+          {pinned.length > 0 && (
+            <div className="mb-3 flex items-center gap-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                All Repositories
+              </h3>
+            </div>
+          )}
+          <div className={gridClasses}>
+            {unpinned.map((repo) => (
+              <RepoCard
+                key={repo.id}
+                repo={repo}
+                viewMode={viewMode}
+                isPinned={false}
+                onStartSession={onStartSession}
+                onTogglePin={onTogglePin}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

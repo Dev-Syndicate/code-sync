@@ -43,12 +43,12 @@ function LoginContent() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)',
+        background: 'linear-gradient(135deg, #f6f7f9 0%, #ecfdf5 50%, #f6f7f9 100%)',
         position: 'relative',
         overflow: 'hidden',
       }}
     >
-      {/* Animated background glow */}
+      {/* Primary forest-green glow */}
       <div
         style={{
           position: 'absolute',
@@ -58,8 +58,23 @@ function LoginContent() {
           width: '600px',
           height: '600px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(37, 99, 235, 0.15) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(15, 81, 50, 0.12) 0%, transparent 70%)',
           filter: 'blur(60px)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Secondary mint glow */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '10%',
+          right: '15%',
+          width: '400px',
+          height: '400px',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(187, 247, 208, 0.35) 0%, transparent 70%)',
+          filter: 'blur(80px)',
           pointerEvents: 'none',
         }}
       />
@@ -70,12 +85,11 @@ function LoginContent() {
           maxWidth: '420px',
           width: '100%',
           padding: '48px 40px',
-          background: 'rgba(30, 41, 59, 0.6)',
-          backdropFilter: 'blur(20px)',
+          background: '#ffffff',
           borderRadius: '20px',
-          border: '1px solid rgba(255, 255, 255, 0.06)',
+          border: '1px solid #e5e7eb',
           textAlign: 'center',
-          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.4)',
+          boxShadow: '0 25px 60px rgba(17, 24, 39, 0.08), 0 8px 16px rgba(17, 24, 39, 0.04)',
         }}
       >
         {/* Logo / Branding */}
@@ -91,14 +105,15 @@ function LoginContent() {
             style={{
               width: '40px',
               height: '40px',
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #0f5132, #22c55e)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '20px',
+              fontSize: '18px',
               fontWeight: 700,
               color: '#ffffff',
+              boxShadow: '0 8px 24px -8px rgba(15, 81, 50, 0.4)',
             }}
           >
             {'</>'}
@@ -106,8 +121,8 @@ function LoginContent() {
           <span
             style={{
               fontSize: '28px',
-              fontWeight: 700,
-              color: '#f1f5f9',
+              fontWeight: 800,
+              color: '#111827',
               letterSpacing: '-0.5px',
             }}
           >
@@ -117,10 +132,11 @@ function LoginContent() {
 
         <h1
           style={{
-            fontSize: '20px',
-            fontWeight: 600,
-            color: '#f1f5f9',
+            fontSize: '22px',
+            fontWeight: 700,
+            color: '#111827',
             marginBottom: '8px',
+            letterSpacing: '-0.3px',
           }}
         >
           Welcome back
@@ -129,7 +145,7 @@ function LoginContent() {
         <p
           style={{
             fontSize: '14px',
-            color: '#94a3b8',
+            color: '#6b7280',
             marginBottom: '36px',
             lineHeight: 1.6,
           }}
@@ -146,7 +162,7 @@ function LoginContent() {
         <p
           style={{
             fontSize: '12px',
-            color: '#475569',
+            color: '#9ca3af',
             marginTop: '28px',
             lineHeight: 1.5,
           }}
@@ -170,8 +186,8 @@ export default function LoginPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: '#0f172a',
-            color: '#94a3b8',
+            background: '#f6f7f9',
+            color: '#6b7280',
           }}
         >
           Loading...

@@ -28,8 +28,8 @@ export default function CallbackPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#0f172a',
-        color: '#94a3b8',
+        background: '#f6f7f9',
+        color: '#6b7280',
       }}
     >
       <div style={{ textAlign: 'center' }}>
@@ -37,8 +37,8 @@ export default function CallbackPage() {
           style={{
             width: '32px',
             height: '32px',
-            border: '3px solid #334155',
-            borderTopColor: '#2563eb',
+            border: '3px solid #e5e7eb',
+            borderTopColor: '#0f5132',
             borderRadius: '50%',
             animation: 'spin 0.8s linear infinite',
             margin: '0 auto 16px',

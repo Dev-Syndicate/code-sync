@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react'
 import { useRepoStore } from '@/store/repoStore'
-import type { GitHubRepo } from '@/types'
 
 export function useRepos() {
   const {
@@ -12,10 +11,18 @@ export function useRepos() {
     searchQuery,
     languageFilter,
     viewMode,
+    sortBy,
+    visibilityFilter,
+    hideForks,
+    pinnedRepoIds,
     setRepos,
     setSearchQuery,
     setLanguageFilter,
     setViewMode,
+    setSortBy,
+    setVisibilityFilter,
+    setHideForks,
+    togglePinned,
     setLoading,
     setError,
   } = useRepoStore()
@@ -37,13 +44,14 @@ export function useRepos() {
           } else {
             // Handle specific error codes
             if (json.error?.code === 'AUTH_EXPIRED' || json.error?.code === 'AUTH_REQUIRED') {
-              window.location.href = '/login'
+              await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
+              window.location.replace('/login')
               return
             }
             setError(json.error?.message ?? 'Failed to fetch repositories')
           }
         }
-      } catch (err) {
+      } catch {
         if (!cancelled) {
           setError('Network error. Please check your connection.')
         }
@@ -69,15 +77,24 @@ export function useRepos() {
 
   return {
     repos: filteredRepos,
+    allRepos,
     loading,
     error,
     searchQuery,
     languageFilter,
     viewMode,
+    sortBy,
+    visibilityFilter,
+    hideForks,
+    pinnedRepoIds,
     languages,
     setSearchQuery,
     setLanguageFilter,
     setViewMode,
+    setSortBy,
+    setVisibilityFilter,
+    setHideForks,
+    togglePinned,
     refetch: () => {
       setRepos([])
       setLoading(true)

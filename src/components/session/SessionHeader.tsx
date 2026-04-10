@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from '@/components/ui/Button'
+import { Button } from '@/components/ui/legacy/Button'
 import { ShareLink } from '@/components/session/ShareLink'
 import { CommitModal } from '@/components/session/CommitModal'
 import { CommitHistoryModal, type RevertedFile } from '@/components/session/CommitHistoryModal'

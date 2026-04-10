@@ -1,6 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { Book, GitFork, Play, Star } from 'lucide-react'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import type { GitHubRepo } from '@/types'
 
 // ── Language color map (matches GitHub's language colors) ──
@@ -46,155 +50,126 @@ function getRelativeTime(dateStr: string): string {
 interface RepoCardProps {
   repo: GitHubRepo
   viewMode: 'grid' | 'list'
+  isPinned: boolean
   onStartSession: (repo: GitHubRepo) => void
+  onTogglePin: (id: number) => void
 }
 
-export function RepoCard({ repo, viewMode, onStartSession }: RepoCardProps) {
-  const [isHovered, setIsHovered] = useState(false)
-
+export function RepoCard({ repo, viewMode, isPinned, onStartSession, onTogglePin }: RepoCardProps) {
   const isGrid = viewMode === 'grid'
 
   return (
-    <div
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      style={{
-        background: isHovered
-          ? 'linear-gradient(135deg, rgba(37,99,235,0.08), rgba(16,185,129,0.05))'
-          : '#1e293b',
-        border: `1px solid ${isHovered ? '#3b82f6' : '#334155'}`,
-        borderRadius: '12px',
-        padding: isGrid ? '20px' : '16px 20px',
-        display: isGrid ? 'flex' : 'flex',
-        flexDirection: isGrid ? 'column' : 'row',
-        alignItems: isGrid ? 'stretch' : 'center',
-        gap: isGrid ? '14px' : '20px',
-        transition: 'all 250ms ease',
-        cursor: 'pointer',
-        transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
-        boxShadow: isHovered
-          ? '0 8px 20px rgba(0,0,0,0.4)'
-          : '0 1px 3px rgba(0,0,0,0.2)',
-      }}
+    <Card
       onClick={() => onStartSession(repo)}
+      className={cn(
+        'group relative cursor-pointer transition-all duration-200',
+        'hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+        isPinned && 'border-primary/30 bg-gradient-to-br from-card to-primary/[0.04]',
+        isGrid ? 'flex flex-col gap-3.5 p-5' : 'flex flex-row items-center gap-5 p-4 px-5'
+      )}
     >
-      {/* Repo info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Name + badges row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
-          {/* Repo icon */}
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="#94a3b8" style={{ flexShrink: 0 }}>
-            <path d="M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 010-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1h-8a1 1 0 00-1 1v6.708A2.486 2.486 0 014.5 9h8V1.5zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z" />
-          </svg>
+      {/* Pin button — absolute top-right */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onTogglePin(repo.id)
+        }}
+        aria-label={isPinned ? 'Unpin repository' : 'Pin repository'}
+        aria-pressed={isPinned}
+        className={cn(
+          'absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-lg transition-all',
+          'opacity-0 group-hover:opacity-100',
+          isPinned && 'opacity-100',
+          'hover:bg-accent focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+        )}
+      >
+        <Star
+          className={cn(
+            'h-4 w-4 transition-colors',
+            isPinned ? 'fill-primary text-primary' : 'text-muted-foreground'
+          )}
+        />
+      </button>
 
-          <span style={{
-            color: '#60a5fa',
-            fontWeight: 600,
-            fontSize: '15px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}>
+      {/* Repo info */}
+      <div className="min-w-0 flex-1 pr-8">
+        {/* Name + badges row */}
+        <div className="mb-1.5 flex flex-wrap items-center gap-2">
+          <Book className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="truncate text-[15px] font-bold text-foreground">
             {repo.name}
           </span>
 
-          {/* Visibility badge */}
-          <span style={{
-            fontSize: '11px',
-            color: '#94a3b8',
-            border: '1px solid #475569',
-            borderRadius: '9999px',
-            padding: '1px 8px',
-            fontWeight: 500,
-          }}>
+          <Badge
+            variant="outline"
+            className="border-border/70 bg-muted/50 text-[11px] font-medium text-muted-foreground"
+          >
             {repo.private ? 'Private' : 'Public'}
-          </span>
+          </Badge>
 
           {repo.fork && (
-            <span style={{
-              fontSize: '11px',
-              color: '#94a3b8',
-              border: '1px solid #475569',
-              borderRadius: '9999px',
-              padding: '1px 8px',
-              fontWeight: 500,
-            }}>
+            <Badge
+              variant="outline"
+              className="gap-1 border-border/70 bg-muted/50 text-[11px] font-medium text-muted-foreground"
+            >
+              <GitFork className="h-3 w-3" aria-hidden />
               Fork
-            </span>
+            </Badge>
           )}
         </div>
 
         {/* Description */}
         {repo.description && (
-          <p style={{
-            color: '#94a3b8',
-            fontSize: '13px',
-            lineHeight: '1.5',
-            margin: '0 0 10px 0',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: isGrid ? 2 : 1,
-            WebkitBoxOrient: 'vertical',
-          }}>
+          <p
+            className={cn(
+              'mb-2.5 overflow-hidden text-[13px] leading-relaxed text-muted-foreground',
+              isGrid ? 'line-clamp-2' : 'line-clamp-1'
+            )}
+          >
             {repo.description}
           </p>
         )}
 
         {/* Meta row: language + stars + updated */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
           {repo.language && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#94a3b8' }}>
-              <span style={{
-                width: '10px',
-                height: '10px',
-                borderRadius: '50%',
-                background: getLanguageColor(repo.language),
-                display: 'inline-block',
-              }} />
+            <span className="flex items-center gap-1.5 font-medium">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-full ring-2 ring-background"
+                style={{ background: getLanguageColor(repo.language) }}
+                aria-hidden
+              />
               {repo.language}
             </span>
           )}
 
           {repo.stargazers_count > 0 && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#94a3b8' }}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="#94a3b8">
-                <path d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25z" />
-              </svg>
+            <span className="flex items-center gap-1 font-medium">
+              <Star className="h-3.5 w-3.5" aria-hidden />
               {repo.stargazers_count}
             </span>
           )}
 
-          <span style={{ fontSize: '12px', color: '#64748b' }}>
+          <span className="text-muted-foreground/70">
             Updated {getRelativeTime(repo.updated_at)}
           </span>
         </div>
       </div>
 
       {/* Start session button */}
-      <button
+      <Button
+        size="sm"
         onClick={(e) => {
           e.stopPropagation()
           onStartSession(repo)
         }}
-        style={{
-          background: isHovered
-            ? 'linear-gradient(135deg, #2563eb, #3b82f6)'
-            : 'transparent',
-          color: isHovered ? '#ffffff' : '#3b82f6',
-          border: isHovered ? 'none' : '1px solid #3b82f6',
-          borderRadius: '8px',
-          padding: '8px 16px',
-          fontSize: '13px',
-          fontWeight: 600,
-          cursor: 'pointer',
-          transition: 'all 200ms ease',
-          whiteSpace: 'nowrap',
-          flexShrink: 0,
-        }}
+        className="shrink-0 gap-1.5 rounded-full bg-primary font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
       >
+        <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
         Start Session
-      </button>
-    </div>
+      </Button>
+    </Card>
   )
 }

@@ -1,107 +1,99 @@
+import { Card } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+
 export default function DashboardLoading() {
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: '#0f172a',
-        padding: '0',
-      }}
-    >
-      {/* Header skeleton */}
-      <div style={{
-        borderBottom: '1px solid #1e293b',
-        padding: '16px 32px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '32px', height: '32px', borderRadius: '8px',
-            background: '#1e293b', animation: 'pulse 2s ease-in-out infinite',
-          }} />
-          <div style={{
-            width: '120px', height: '20px', borderRadius: '6px',
-            background: '#1e293b', animation: 'pulse 2s ease-in-out infinite',
-          }} />
-        </div>
-        <div style={{
-          width: '36px', height: '36px', borderRadius: '50%',
-          background: '#1e293b', animation: 'pulse 2s ease-in-out infinite',
-        }} />
-      </div>
+    <div className="min-h-screen bg-background">
+      <div className="flex">
+        {/* Sidebar skeleton */}
+        <aside className="fixed left-0 top-0 hidden h-screen w-[240px] flex-col border-r border-border/60 bg-sidebar p-5 lg:flex">
+          <div className="mb-8 flex items-center gap-2.5">
+            <Skeleton className="h-9 w-9 rounded-xl" />
+            <Skeleton className="h-5 w-24" />
+          </div>
+          <Skeleton className="mb-3 h-3 w-12" />
+          <div className="space-y-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="mb-3 mt-8 h-3 w-16" />
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 rounded-xl" />
+            ))}
+          </div>
+          <div className="mt-auto">
+            <Skeleton className="h-36 rounded-2xl" />
+          </div>
+        </aside>
 
-      {/* Main content skeleton */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px' }}>
-        {/* Greeting skeleton */}
-        <div style={{
-          width: '280px', height: '28px', borderRadius: '6px',
-          background: '#1e293b', marginBottom: '8px',
-          animation: 'pulse 2s ease-in-out infinite',
-        }} />
-        <div style={{
-          width: '200px', height: '16px', borderRadius: '6px',
-          background: '#1e293b', marginBottom: '32px',
-          animation: 'pulse 2s ease-in-out infinite',
-        }} />
-
-        {/* Toolbar skeleton */}
-        <div style={{
-          display: 'flex', gap: '12px', marginBottom: '24px',
-          flexWrap: 'wrap', alignItems: 'center',
-        }}>
-          <div style={{
-            width: '280px', height: '40px', borderRadius: '8px',
-            background: '#1e293b', animation: 'pulse 2s ease-in-out infinite',
-          }} />
-          <div style={{
-            width: '140px', height: '40px', borderRadius: '8px',
-            background: '#1e293b', animation: 'pulse 2s ease-in-out infinite',
-          }} />
-          <div style={{ flex: 1 }} />
-          <div style={{
-            width: '80px', height: '40px', borderRadius: '8px',
-            background: '#1e293b', animation: 'pulse 2s ease-in-out infinite',
-          }} />
-        </div>
-
-        {/* Repo cards skeleton */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-          gap: '16px',
-        }}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              style={{
-                background: '#1e293b',
-                border: '1px solid #334155',
-                borderRadius: '12px',
-                padding: '20px',
-                animation: 'pulse 2s ease-in-out infinite',
-                animationDelay: `${i * 100}ms`,
-              }}
-            >
-              <div style={{ height: '16px', width: '60%', background: '#334155', borderRadius: '4px', marginBottom: '12px' }} />
-              <div style={{ height: '12px', width: '90%', background: '#334155', borderRadius: '4px', marginBottom: '8px' }} />
-              <div style={{ height: '12px', width: '70%', background: '#334155', borderRadius: '4px', marginBottom: '16px' }} />
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ height: '10px', width: '60px', background: '#334155', borderRadius: '4px' }} />
-                <div style={{ height: '10px', width: '40px', background: '#334155', borderRadius: '4px' }} />
-                <div style={{ height: '10px', width: '80px', background: '#334155', borderRadius: '4px' }} />
+        <div className="flex-1 lg:pl-[240px]">
+          {/* Top bar skeleton */}
+          <div className="border-b border-border/60 bg-background/85">
+            <div className="flex h-[72px] items-center justify-between gap-4 px-6 sm:px-8">
+              <Skeleton className="hidden h-10 w-[420px] max-w-full rounded-full lg:block" />
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <Skeleton className="hidden h-10 w-36 rounded-full sm:block" />
+                <Skeleton className="h-10 w-10 rounded-full" />
               </div>
             </div>
-          ))}
+          </div>
+
+          {/* Main skeleton */}
+          <div className="mx-auto max-w-[1280px] px-6 py-8 sm:px-8">
+            {/* Hero */}
+            <div className="mb-8">
+              <Skeleton className="mb-2 h-10 w-48" />
+              <Skeleton className="h-4 w-80" />
+            </div>
+
+            {/* Stats strip */}
+            <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Card key={i} className="p-5">
+                  <Skeleton className="mb-3 h-10 w-10 rounded-xl" />
+                  <Skeleton className="mb-2 h-2.5 w-24" />
+                  <Skeleton className="h-8 w-12" />
+                </Card>
+              ))}
+            </div>
+
+            {/* Toolbar */}
+            <div className="mb-6 flex flex-wrap items-center gap-3">
+              <Skeleton className="h-10 w-[280px] max-w-full rounded-full" />
+              <Skeleton className="h-10 w-[150px] rounded-full" />
+              <Skeleton className="h-10 w-[150px] rounded-full" />
+              <Skeleton className="h-10 w-24 rounded-full" />
+              <div className="flex-1" />
+              <Skeleton className="h-10 w-20 rounded-full" />
+            </div>
+
+            {/* Repo cards */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fill,minmax(320px,1fr))]">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Card
+                  key={i}
+                  className="p-5"
+                  style={{ animationDelay: `${i * 100}ms` }}
+                >
+                  <div className="space-y-3">
+                    <Skeleton className="h-4 w-3/5" />
+                    <Skeleton className="h-3 w-[90%]" />
+                    <Skeleton className="h-3 w-2/3" />
+                    <div className="flex gap-3 pt-2">
+                      <Skeleton className="h-2.5 w-16" />
+                      <Skeleton className="h-2.5 w-10" />
+                      <Skeleton className="h-2.5 w-20" />
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
-      `}</style>
     </div>
   )
 }
