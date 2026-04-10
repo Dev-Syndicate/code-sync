@@ -43,3 +43,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Firebase service account keys — NEVER commit these
+*firebase-adminsdk*.json
+
+# dec rules
+DEV-RULES.md
