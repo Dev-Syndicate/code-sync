@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import * as Y from 'yjs'
 import type { WebrtcProvider } from 'y-webrtc'
 import { createCollabProvider, destroyCollabProvider } from '@/lib/yjs/provider'
@@ -36,116 +36,120 @@ const EMPTY_SNAPSHOT: CollabSnapshot = {
   remoteUsers: [],
 }
 
-/**
- * Mutable external store for the collaboration state.
- *
- * We deliberately keep all side effects (Yjs doc + WebRTC provider + awareness
- * subscriptions) OUTSIDE of React's render/useMemo path and drive them from a
- * `useEffect` that is keyed on `sessionId` alone. This guarantees:
- *   1. exactly one `createCollabProvider` call per session mount, so y-webrtc
- *      never throws "A Yjs Doc connected to room X already exists" under
- *      Strict Mode or when identity props change.
- *   2. the provider is NOT recreated when userId/username/avatar/color change —
- *      those are pushed into awareness by a separate effect.
- */
-function createCollabStore() {
-  let snapshot: CollabSnapshot = EMPTY_SNAPSHOT
-  const listeners = new Set<() => void>()
+interface CollabStore {
+  snapshot: CollabSnapshot
+  listeners: Set<() => void>
+  getSnapshot: () => CollabSnapshot
+  subscribe: (listener: () => void) => () => void
+  set: (next: CollabSnapshot) => void
+  update: (patch: Partial<CollabSnapshot>) => void
+}
 
-  const emit = () => {
-    listeners.forEach((l) => l())
-  }
-
-  return {
-    getSnapshot: () => snapshot,
-    subscribe: (listener: () => void) => {
-      listeners.add(listener)
+function createCollabStore(): CollabStore {
+  const store: CollabStore = {
+    snapshot: EMPTY_SNAPSHOT,
+    listeners: new Set(),
+    getSnapshot: () => store.snapshot,
+    subscribe: (listener) => {
+      store.listeners.add(listener)
       return () => {
-        listeners.delete(listener)
+        store.listeners.delete(listener)
       }
     },
-    set: (next: CollabSnapshot) => {
-      snapshot = next
-      emit()
+    set: (next) => {
+      store.snapshot = next
+      store.listeners.forEach((l) => l())
     },
-    patch: (partial: Partial<CollabSnapshot>) => {
-      snapshot = { ...snapshot, ...partial }
-      emit()
-    },
-    reset: () => {
-      snapshot = EMPTY_SNAPSHOT
-      emit()
+    update: (patch) => {
+      store.snapshot = { ...store.snapshot, ...patch }
+      store.listeners.forEach((l) => l())
     },
   }
+  return store
 }
 
 /**
  * Main collaboration hook — sets up Yjs doc, WebRTC provider, and awareness.
+ *
+ * Design notes:
+ *
+ * 1. The Yjs doc + WebrtcProvider are created in a useEffect keyed ONLY on
+ *    sessionId. `y-webrtc` keeps a module-level `rooms` Map keyed by room
+ *    name, and throws "A Yjs Doc connected to room … already exists!" if
+ *    two providers ever share a room. That means (a) provider creation
+ *    MUST happen in an effect (not useMemo / render) so React guarantees
+ *    the previous provider's cleanup runs before the next one starts, and
+ *    (b) identity fields (userId/username/avatar/color) must NOT be in the
+ *    dep array — they change often and would force a teardown/recreate per
+ *    profile update. Those are pushed via awareness instead.
+ *
+ * 2. React 19 strict mode double-invokes effects in dev. The cleanup in the
+ *    return of the setup effect runs between invocations, so the provider
+ *    for the first invocation is fully destroyed before the second creates
+ *    a new one. That is the contract we rely on here.
+ *
+ * 3. State is exposed to React via useSyncExternalStore against an
+ *    imperative store. We deliberately avoid setState-in-effect so the
+ *    React 19 cascading-render lint rule is happy.
  */
 export function useCollaboration(
   options: UseCollaborationOptions
 ): UseCollaborationReturn {
   const { sessionId, userId, username, avatar, color } = options
 
-  // One store instance per hook invocation. Stable across renders.
-  const store = useMemo(() => createCollabStore(), [])
-  const providerRef = useRef<WebrtcProvider | null>(null)
-  const ydocRef = useRef<Y.Doc | null>(null)
+  // Per-hook-instance imperative store. Created once via lazy useState so
+  // the same object is handed back on every render. We never call the setter.
+  const [store] = useState(createCollabStore)
 
-  // ── Provider lifecycle: one provider per sessionId ─────────────────
+  // ── Provider lifecycle: keyed on sessionId only ────────────────────────
   useEffect(() => {
     if (!sessionId) return
 
     const doc = new Y.Doc()
     const prov = createCollabProvider(sessionId, doc)
 
-    ydocRef.current = doc
-    providerRef.current = prov
+    store.set({
+      ydoc: doc,
+      provider: prov,
+      isReady: false,
+      remoteUsers: [],
+    })
 
-    // Initial snapshot push happens from an event callback (timer), not
-    // synchronously, so the set-state-in-effect lint stays happy.
-    const initTimer = setTimeout(() => {
-      store.set({
-        ydoc: doc,
-        provider: prov,
-        isReady: false,
-        remoteUsers: [],
-      })
-    }, 0)
-
-    const unsubAwareness = onAwarenessChange(prov, (states) => {
-      store.patch({ remoteUsers: states })
+    const unsubscribeAwareness = onAwarenessChange(prov, (states) => {
+      store.update({ remoteUsers: states })
     })
 
     const handleStatus = ({ connected }: { connected: boolean }) => {
-      if (connected) store.patch({ isReady: true })
+      if (connected) {
+        store.update({ isReady: true })
+      }
     }
     prov.on('status', handleStatus)
 
-    // Fallback: mark ready after 2s even if no peer connects (solo session)
+    // Fallback: mark ready after 2s even if the signaling server is slow,
+    // so the editor doesn't stay stuck in a loading state in offline dev.
     const readyTimer = setTimeout(() => {
-      store.patch({ isReady: true })
+      if (!store.getSnapshot().isReady) {
+        store.update({ isReady: true })
+      }
     }, 2000)
 
     return () => {
-      clearTimeout(initTimer)
       clearTimeout(readyTimer)
-      unsubAwareness()
+      unsubscribeAwareness()
       prov.off('status', handleStatus)
       destroyCollabProvider(prov)
       doc.destroy()
-
-      ydocRef.current = null
-      providerRef.current = null
-      store.reset()
+      store.set(EMPTY_SNAPSHOT)
     }
   }, [sessionId, store])
 
-  // ── Identity: push into awareness without touching the provider ────
+  // ── Identity sync: push user fields into awareness without tearing the
+  //    provider down. Reads the live provider from the store snapshot.
+  const currentProvider = store.getSnapshot().provider
   useEffect(() => {
-    const prov = providerRef.current
-    if (!prov) return
-    setLocalAwareness(prov, {
+    if (!currentProvider) return
+    setLocalAwareness(currentProvider, {
       userId,
       username,
       avatar,
@@ -153,7 +157,7 @@ export function useCollaboration(
       currentFile: null,
       cursor: null,
     })
-  }, [userId, username, avatar, color])
+  }, [currentProvider, userId, username, avatar, color])
 
   const snapshot = useSyncExternalStore(
     store.subscribe,
@@ -161,11 +165,14 @@ export function useCollaboration(
     store.getSnapshot
   )
 
-  const getText = useCallback((fileName: string): Y.Text => {
-    const doc = ydocRef.current
-    if (!doc) throw new Error('Yjs document not initialized')
-    return doc.getText(`file:${fileName}`)
-  }, [])
+  const getText = useCallback(
+    (fileName: string): Y.Text => {
+      const doc = store.getSnapshot().ydoc
+      if (!doc) throw new Error('Yjs document not initialized')
+      return doc.getText(`file:${fileName}`)
+    },
+    [store]
+  )
 
   return { ...snapshot, getText }
 }
