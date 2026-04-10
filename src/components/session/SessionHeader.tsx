@@ -94,7 +94,7 @@ export function SessionHeader({
             size="sm"
             onClick={() => setShowShareModal(true)}
           >
-            🔗 Share
+            Share
           </Button>
 
           <Button
@@ -103,7 +103,7 @@ export function SessionHeader({
             onClick={onSave}
             disabled={!hasDirtyFiles || saveStatus === 'saving'}
           >
-            {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : '💾 Save'}
+            {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : 'Save'}
           </Button>
 
           <Button
@@ -113,7 +113,7 @@ export function SessionHeader({
             disabled={!onRevertSave || revertStatus === 'loading'}
             title="Revert every open file to its last saved draft (shared with all peers)"
           >
-            {revertStatus === 'loading' ? 'Reverting...' : '↺ Revert Save'}
+            {revertStatus === 'loading' ? 'Reverting...' : 'Revert Save'}
           </Button>
 
           <Button
@@ -122,7 +122,7 @@ export function SessionHeader({
             onClick={() => setShowHistoryModal(true)}
             title="Show commit history and revert past commits"
           >
-            🕐 History
+            History
           </Button>
 
           <Button
@@ -130,7 +130,7 @@ export function SessionHeader({
             size="sm"
             onClick={() => setShowCommitModal(true)}
           >
-            💾 Commit & Push
+            Commit &amp; Push
           </Button>
 
           <Button
@@ -143,7 +143,7 @@ export function SessionHeader({
               }
             }}
           >
-            🚪 Leave
+            Leave
           </Button>
         </div>
       </header>

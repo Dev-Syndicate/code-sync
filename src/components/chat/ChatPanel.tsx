@@ -41,7 +41,6 @@ export function ChatPanel({ sessionId }: Props) {
           flexShrink:    0,
         }}
       >
-        <span style={{ fontSize: '14px' }}>💬</span>
         <span
           style={{
             fontSize:   'var(--text-sm)',
@@ -97,7 +96,6 @@ export function ChatPanel({ sessionId }: Props) {
               fontSize:       'var(--text-sm)',
             }}
           >
-            <span style={{ fontSize: '24px' }}>💬</span>
             <span>No messages yet.</span>
             <span style={{ fontSize: 'var(--text-xs)' }}>Say hi to the team!</span>
           </div>
