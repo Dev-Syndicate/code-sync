@@ -10,19 +10,8 @@ import {
   type Unsubscribe,
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase/config'
-import { createUser, getUser, updateUser, saveUserToken } from '@/lib/firebase/models/user'
+import { createUser, getUser, updateUser } from '@/lib/firebase/models/user'
 import type { User, CreateUserInput, GitHubProfile } from '@/types'
-
-// ── Cookie helpers ──
-
-function setCookie(name: string, value: string, days: number): void {
-  const expires = new Date(Date.now() + days * 864e5).toUTCString()
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`
-}
-
-function deleteCookie(name: string): void {
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax`
-}
 
 // ── GitHub profile fetcher ──
 
@@ -46,11 +35,10 @@ async function fetchGitHubProfile(accessToken: string): Promise<GitHubProfile> {
 /**
  * Triggers GitHub OAuth via Firebase popup.
  * After successful auth:
- * 1. Extracts the GitHub access token from the credential
+ * 1. Extracts the GitHub access token and Firebase ID token
  * 2. Fetches the GitHub user profile
- * 3. Creates or updates the user in Firestore
- * 4. Stores the access token in Firestore (private subcollection)
- * 5. Sets a session cookie for middleware route protection
+ * 3. Creates or updates the user in Firestore directly from the client
+ * 4. Calls Dev 4's /api/auth/session contract passing both tokens to handle secure cookie + token storage
  */
 export async function loginWithGitHub(): Promise<User> {
   const provider = new GithubAuthProvider()
@@ -71,6 +59,7 @@ export async function loginWithGitHub(): Promise<User> {
 
   const firebaseUser = result.user
   const uid = firebaseUser.uid
+  const idToken = await firebaseUser.getIdToken()
 
   // Fetch full GitHub profile using the access token
   const profile = await fetchGitHubProfile(accessToken)
@@ -108,11 +97,17 @@ export async function loginWithGitHub(): Promise<User> {
     user = await createUser(uid, input)
   }
 
-  // Store GitHub access token in private subcollection
-  await saveUserToken(uid, accessToken)
+  // Contract: Call Dev 4's API to set the secure HTTP-only session cookie
+  // and securely store the GitHub access token in the private subcollection.
+  const res = await fetch('/api/auth/session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken, accessToken }),
+  })
 
-  // Set session cookie for middleware route protection (7 days)
-  setCookie('session', uid, 7)
+  if (!res.ok) {
+    throw new Error('Failed to create server session')
+  }
 
   return user
 }
@@ -120,11 +115,13 @@ export async function loginWithGitHub(): Promise<User> {
 // ── Logout ──
 
 /**
- * Signs the user out of Firebase Auth and clears the session cookie.
+ * Signs the user out of Firebase Auth and calls API to clear the secure session cookie.
  */
 export async function logoutUser(): Promise<void> {
+  // Clear the secure cookie via API
+  await fetch('/api/auth/logout', { method: 'POST' })
+  // Sign out of Firebase on the client
   await signOut(auth)
-  deleteCookie('session')
 }
 
 // ── Auth state listener ──
