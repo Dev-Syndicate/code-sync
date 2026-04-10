@@ -1,9 +1,8 @@
 'use client'
 
 import { type ReactNode } from 'react'
-// TODO: Import providers as they are created
-// import { AuthProvider } from '@/components/providers/AuthProvider'
-// import { ToastProvider } from '@/components/providers/ToastProvider'
+import { AuthProvider } from '@/components/providers/AuthProvider'
+import { ToastProvider } from '@/components/providers/ToastProvider'
 
 interface Props {
   children: ReactNode
@@ -11,12 +10,10 @@ interface Props {
 
 export function AppProviders({ children }: Props) {
   return (
-    // TODO: Wrap with providers as they are created
-    // <AuthProvider>
-    //   <ToastProvider>
-    //     {children}
-    //   </ToastProvider>
-    // </AuthProvider>
-    <>{children}</>
+    <AuthProvider>
+      <ToastProvider>
+        {children}
+      </ToastProvider>
+    </AuthProvider>
   )
 }
