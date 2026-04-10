@@ -5,18 +5,29 @@ import type { editor } from 'monaco-editor'
 import { CodeEditor } from '@/components/editor/CodeEditor'
 import { FileTree } from '@/components/editor/FileTree'
 import { EditorTabs } from '@/components/editor/EditorTabs'
-import { CollabCursor } from '@/components/editor/CollabCursor'
 import { SessionHeader } from '@/components/session/SessionHeader'
 import { ParticipantList } from '@/components/session/ParticipantList'
 import { useEditor } from '@/hooks/useEditor'
 import { useCollaboration } from '@/hooks/useCollaboration'
+import { updateCurrentFile } from '@/lib/yjs/awareness'
+import { useMonacoYjsBinding } from '@/hooks/useMonacoYjsBinding'
+import { useDraftRevert } from '@/hooks/useDraftRevert'
+import type { RevertedFile } from '@/components/session/CommitHistoryModal'
 import { useConnectionStatus } from '@/hooks/useConnectionStatus'
 import { useFileEditorTracking } from '@/hooks/useFileEditorTracking'
 import { useAuth } from '@/hooks/useAuth'
+import { useDraftSave } from '@/hooks/useDraftSave'
 import { useEditorStore, type FileNode } from '@/store/editorStore'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { CURSOR_COLORS } from '@/types/session'
-import type { RemoteCursor } from '@/types/editor'
+
+function formatRelativeTime(date: Date): string {
+  const secs = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (secs < 60) return `${secs}s`
+  const mins = Math.floor(secs / 60)
+  if (mins < 60) return `${mins}m`
+  return `${Math.floor(mins / 60)}h`
+}
 
 // ── Flat path list → nested FileNode tree (VS Code Explorer style) ──
 // Input: [{ path: 'src/app/page.tsx', language: 'typescript' }, ...]
@@ -195,7 +206,6 @@ export default function SessionPage({
     activeFile,
     activeTab,
     settings,
-    updateFileContent,
   } = useEditor()
 
   // ── Monaco editor instance ──
@@ -203,7 +213,7 @@ export default function SessionPage({
     useState<editor.IStandaloneCodeEditor | null>(null)
 
   // ── Collaboration (Yjs + WebRTC) ──
-  const { provider, isReady, remoteUsers } = useCollaboration({
+  const { ydoc, provider, isReady, remoteUsers } = useCollaboration({
     sessionId,
     userId: currentUser.uid,
     username: currentUser.username,
@@ -211,8 +221,89 @@ export default function SessionPage({
     color: currentUser.color,
   })
 
+  // ── Bind Monaco to the per-file Y.Text so edits + selections replicate ──
+  // `activeTab.content` is what `openFile` just put in the store (GitHub or
+  // restored draft). It's used as the seed only if the file's Y.Text is
+  // empty — otherwise we pull the live collaborative state from peers.
+  const handleYjsContentChange = useCallback(
+    (file: string, content: string) => {
+      // Only touch the store when the content actually changed. Prevents a
+      // spurious "dirty" mark when the binding mirrors its own seed back
+      // through the observer on first mount.
+      const tab = useEditorStore.getState().tabs.find((t) => t.path === file)
+      if (!tab || tab.content === content) return
+      useEditorStore.getState().updateFileContent(file, content)
+    },
+    []
+  )
+  useMonacoYjsBinding({
+    editor: editorInstance,
+    ydoc,
+    provider,
+    isReady,
+    activeFile,
+    initialContent: activeTab?.content,
+    onContentChange: handleYjsContentChange,
+  })
+
+  // Publish the active file into awareness so peers know which file the
+  // local user is viewing (used by ParticipantList and — if we ever render
+  // per-file cursor lists — by the cursor UI). y-monaco handles the caret
+  // itself via `state.selection`; `state.user.currentFile` is our own field.
+  useEffect(() => {
+    if (!provider || !activeFile) return
+    updateCurrentFile(provider, activeFile)
+  }, [provider, activeFile])
+
   // ── Connection status ──
   const connectionStatus = useConnectionStatus(provider)
+
+  // ── Draft save ──
+  const { save, saveStatus, hasDirtyFiles, lastSavedAt } = useDraftSave({ sessionId })
+
+  // ── Save Revert — roll every open file back to its last saved draft ──
+  const { revertToLastSave, revertStatus } = useDraftRevert({ sessionId, ydoc })
+
+  // ── Commit Revert — hard-reset Y.Text for files the revert touched ──
+  //
+  // The /api/commits/revert route returns the post-revert content for every
+  // file the inverse commit changed. We rewrite each file's Y.Text inside a
+  // single transaction so every peer's editor snaps to the reverted state
+  // in lockstep. Files that aren't currently open don't need handling — the
+  // next `openFile` will pull the fresh (post-revert) content from GitHub.
+  const handleCommitReverted = useCallback(
+    (affectedFiles: RevertedFile[]) => {
+      if (!ydoc) return
+      const { tabs, closeFile, markDirty } = useEditorStore.getState()
+      const openPaths = new Set(tabs.map((t) => t.path))
+
+      ydoc.transact(() => {
+        for (const file of affectedFiles) {
+          if (!openPaths.has(file.path)) continue
+          const ytext = ydoc.getText(`file:${file.path}`)
+          if (ytext.length > 0) ytext.delete(0, ytext.length)
+          if (file.operation !== 'delete' && file.content) {
+            ytext.insert(0, file.content)
+          }
+        }
+      })
+
+      // For files the revert DELETED, close the tab — there's nothing to
+      // look at anymore. For modify/create, clear dirty since the buffer
+      // now matches the new baseline on GitHub.
+      queueMicrotask(() => {
+        for (const file of affectedFiles) {
+          if (!openPaths.has(file.path)) continue
+          if (file.operation === 'delete') {
+            closeFile(file.path)
+          } else {
+            markDirty(file.path, false)
+          }
+        }
+      })
+    },
+    [ydoc],
+  )
 
   // ── File editor tracking (Firestore) ──
   useFileEditorTracking({
@@ -224,30 +315,9 @@ export default function SessionPage({
     currentFile: activeFile,
   })
 
-  // ── Remote cursors (convert awareness states → RemoteCursor[]) ──
-  const remoteCursors: RemoteCursor[] = useMemo(
-    () =>
-      remoteUsers
-        .filter((u) => u.currentFile === activeFile && u.cursor)
-        .map((u) => ({
-          userId: u.userId,
-          username: u.username,
-          color: u.color,
-          file: u.currentFile ?? '',
-          position: u.cursor!,
-        })),
-    [remoteUsers, activeFile]
-  )
-
-  // ── Editor change handler ──
-  const handleEditorChange = useCallback(
-    (value: string | undefined) => {
-      if (activeFile && value !== undefined) {
-        updateFileContent(activeFile, value)
-      }
-    },
-    [activeFile, updateFileContent]
-  )
+  // Remote cursors are rendered automatically by y-monaco via Monaco
+  // decorations driven off `provider.awareness.selection` — see the
+  // .yRemoteSelection* classes in globals.css. No React wrapper needed.
 
   // ── Editor mount handler ──
   const handleEditorMount = useCallback(
@@ -264,6 +334,12 @@ export default function SessionPage({
         sessionId={sessionId}
         connectionStatus={connectionStatus}
         participantCount={remoteUsers.length + 1}
+        onSave={save}
+        saveStatus={saveStatus}
+        hasDirtyFiles={hasDirtyFiles}
+        onRevertSave={revertToLastSave}
+        revertStatus={revertStatus}
+        onCommitReverted={handleCommitReverted}
       />
 
       {/* ── Main content area ── */}
@@ -277,6 +353,7 @@ export default function SessionPage({
               className="flex-1"
               repoOwner={repoInfo?.owner ?? null}
               repoName={repoInfo?.repo ?? null}
+              sessionId={sessionId}
             />
           )}
 
@@ -297,19 +374,15 @@ export default function SessionPage({
           {/* Editor area */}
           <div className="flex-1 relative">
             {activeTab ? (
-              <>
-                <CodeEditor
-                  value={activeTab.content}
-                  language={activeTab.language}
-                  onChange={handleEditorChange}
-                  onMount={handleEditorMount}
-                  settings={settings}
-                />
-                <CollabCursor
-                  editor={editorInstance}
-                  cursors={remoteCursors}
-                />
-              </>
+              <CodeEditor
+                // `path` forces a distinct Monaco model per file, so switching
+                // tabs swaps models instead of replacing content in one shared
+                // model. Essential for the Y.Text-per-file binding.
+                path={activeTab.path}
+                language={activeTab.language}
+                onMount={handleEditorMount}
+                settings={settings}
+              />
             ) : (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center text-white/30">
@@ -351,6 +424,14 @@ export default function SessionPage({
                     ? `${remoteUsers.length + 1} collaborators`
                     : 'Solo editing'}
                 </span>
+              )}
+
+              {/* Save status */}
+              {saveStatus === 'saving' && <span className="opacity-70">Saving...</span>}
+              {saveStatus === 'error' && <span className="text-red-300">Save failed</span>}
+              {saveStatus === 'saved' && lastSavedAt && <span className="opacity-70">Saved just now</span>}
+              {saveStatus === 'idle' && lastSavedAt && (
+                <span className="opacity-70">Saved {formatRelativeTime(lastSavedAt)} ago</span>
               )}
             </div>
 

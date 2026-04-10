@@ -102,4 +102,32 @@ body {
 
 /* ═══ EDITOR THEME — Dev 3 owns ═══ */
 
+/* ─── y-monaco remote selection / caret decorations ─────────────────────
+   y-monaco renders peer selections as Monaco decorations with class names
+   `yRemoteSelection` + `yRemoteSelection-<clientID>`, and the caret head as
+   `yRemoteSelectionHead` + `yRemoteSelectionHead-<clientID>`. The base
+   classes below give every peer a visible highlight + vertical caret bar;
+   per-client color overrides are injected dynamically from the awareness
+   `user.color` field by useMonacoYjsBinding. */
+.yRemoteSelection {
+  background-color: rgba(250, 129, 0, 0.35);
+}
+.yRemoteSelectionHead {
+  position: absolute;
+  border-left: 2px solid #fa8100;
+  border-top: 2px solid #fa8100;
+  border-bottom: 2px solid #fa8100;
+  height: 100%;
+  box-sizing: border-box;
+}
+.yRemoteSelectionHead::after {
+  position: absolute;
+  content: ' ';
+  border: 3px solid #fa8100;
+  border-radius: 4px;
+  left: -4px;
+  top: -5px;
+}
+
+
 /* ═══ CHAT THEME — Dev 4 owns ═══ */

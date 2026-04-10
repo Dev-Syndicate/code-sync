@@ -19,7 +19,10 @@ const MonacoEditor = dynamic(
 )
 
 interface CodeEditorProps {
-  value: string
+  /** File path — used as the Monaco model URI so each file gets its own model. */
+  path?: string
+  /** Fallback initial content. Ignored once y-monaco binds to the model. */
+  value?: string
   language: string
   onChange?: (value: string | undefined) => void
   onMount?: (editor: editor.IStandaloneCodeEditor) => void
@@ -28,6 +31,7 @@ interface CodeEditorProps {
 }
 
 export function CodeEditor({
+  path,
   value,
   language,
   onChange,
@@ -38,8 +42,9 @@ export function CodeEditor({
   return (
     <MonacoEditor
       height="100%"
+      path={path}
       language={language}
-      value={value}
+      defaultValue={value ?? ''}
       onChange={onChange}
       theme={settings?.theme ?? 'vs-dark'}
       onMount={(editorInstance) => {

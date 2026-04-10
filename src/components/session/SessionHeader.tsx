@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { ShareLink } from '@/components/session/ShareLink'
 import { CommitModal } from '@/components/session/CommitModal'
+import { CommitHistoryModal, type RevertedFile } from '@/components/session/CommitHistoryModal'
 import type { ConnectionStatus } from '@/hooks/useConnectionStatus'
 
 interface SessionHeaderProps {
@@ -12,7 +13,14 @@ interface SessionHeaderProps {
   participantCount: number
   repoName?: string
   branch?: string
-  isOwner?: boolean
+  onSave?: () => void
+  saveStatus?: 'idle' | 'saving' | 'saved' | 'error'
+  hasDirtyFiles?: boolean
+  /** Save Revert — rolls every open file back to its last saved draft. */
+  onRevertSave?: () => void
+  revertStatus?: 'idle' | 'loading' | 'success' | 'error'
+  /** Called after a commit revert succeeds so the parent can hard-reset Y.Texts. */
+  onCommitReverted?: (affectedFiles: RevertedFile[]) => void
 }
 
 const STATUS_CONFIG: Record<
@@ -30,10 +38,24 @@ export function SessionHeader({
   participantCount,
   repoName = 'Repository',
   branch = 'main',
-  isOwner = true,
+  onSave,
+  saveStatus = 'idle',
+  hasDirtyFiles = false,
+  onRevertSave,
+  revertStatus = 'idle',
+  onCommitReverted,
 }: SessionHeaderProps) {
   const [showShareModal, setShowShareModal] = useState(false)
   const [showCommitModal, setShowCommitModal] = useState(false)
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
+
+  const handleRevertSaveClick = () => {
+    if (!onRevertSave) return
+    const ok = confirm(
+      'Revert to last saved draft?\n\nEvery open file will snap back to its last Save. Unsaved keystrokes on those files will be lost. This change is shared with everyone in the session.',
+    )
+    if (ok) onRevertSave()
+  }
 
   const statusCfg = STATUS_CONFIG[connectionStatus]
 
@@ -75,15 +97,41 @@ export function SessionHeader({
             🔗 Share
           </Button>
 
-          {isOwner && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setShowCommitModal(true)}
-            >
-              💾 Commit & Push
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onSave}
+            disabled={!hasDirtyFiles || saveStatus === 'saving'}
+          >
+            {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : '💾 Save'}
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRevertSaveClick}
+            disabled={!onRevertSave || revertStatus === 'loading'}
+            title="Revert every open file to its last saved draft (shared with all peers)"
+          >
+            {revertStatus === 'loading' ? 'Reverting...' : '↺ Revert Save'}
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowHistoryModal(true)}
+            title="Show commit history and revert past commits"
+          >
+            🕐 History
+          </Button>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setShowCommitModal(true)}
+          >
+            💾 Commit & Push
+          </Button>
 
           <Button
             variant="ghost"
@@ -111,6 +159,12 @@ export function SessionHeader({
         isOpen={showCommitModal}
         onClose={() => setShowCommitModal(false)}
         sessionId={sessionId}
+      />
+      <CommitHistoryModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        sessionId={sessionId}
+        onCommitReverted={onCommitReverted}
       />
     </>
   )

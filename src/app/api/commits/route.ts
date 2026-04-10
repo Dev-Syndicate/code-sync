@@ -14,11 +14,75 @@ import { type NextRequest } from 'next/server'
 import { apiSuccess, apiError } from '@/lib/api/response'
 import { getAuthContext, getGitHubToken } from '@/lib/api/auth'
 import { buildCommitMessage } from '@/lib/github/buildCommitMessage'
-import { commitFiles } from '@/lib/github/commits'
+import { commitFiles, listCommits } from '@/lib/github/commits'
 import { adminDb } from '@/lib/firebase/admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { GitHubApiError } from '@/lib/github/api'
+import { deleteSessionDrafts } from '@/lib/drafts/DraftStore'
 import type { CommitFile } from '@/types/github'
+
+// ── GET /api/commits?sessionId=… ──────────────────────────────────────────────
+// Returns the latest 30 commits on the session's branch. Used by the History
+// modal. Any participant or the owner can read; non-members get 403.
+//
+// Token: we use the session OWNER's GitHub token so the listing works for
+// private repos even when a participant (who has no access) is the caller.
+// Same trust model as POST / revert.
+export async function GET(req: NextRequest) {
+  let uid: string
+  try {
+    const ctx = await getAuthContext(req)
+    uid = ctx.uid
+  } catch {
+    return apiError('AUTH_REQUIRED', 'Authentication required.', 401)
+  }
+
+  const { searchParams } = new URL(req.url)
+  const sessionId = searchParams.get('sessionId')
+  if (!sessionId) {
+    return apiError('VALIDATION_ERROR', 'sessionId is required.', 400)
+  }
+
+  const sessionSnap = await adminDb.collection('sessions').doc(sessionId).get()
+  if (!sessionSnap.exists) {
+    return apiError('NOT_FOUND', 'Session not found.', 404)
+  }
+  const sessionData = sessionSnap.data()!
+
+  const ownerUid    = sessionData.owner as string
+  const isOwner     = ownerUid === uid
+  const participants = (sessionData.participants ?? {}) as Record<string, unknown>
+  const isParticipant = uid in participants
+  if (!isOwner && !isParticipant) {
+    return apiError('FORBIDDEN', 'You are not a member of this session.', 403)
+  }
+
+  const repoOwner = sessionData.repoOwner as string
+  const repoName  = sessionData.repo      as string
+  const branch    = (sessionData.branch as string) || 'main'
+
+  let token: string
+  try {
+    token = await getGitHubToken(ownerUid)
+  } catch {
+    return apiError(
+      'GITHUB_ERROR',
+      'Session owner is not signed in to GitHub.',
+      503,
+    )
+  }
+
+  try {
+    const commits = await listCommits(token, repoOwner, repoName, branch, 30)
+    return apiSuccess({ commits })
+  } catch (err) {
+    if (err instanceof GitHubApiError) {
+      return apiError('GITHUB_ERROR', err.message, 502)
+    }
+    console.error('[GET /api/commits] listCommits failed:', err)
+    return apiError('GITHUB_ERROR', 'Failed to load commit history.', 500)
+  }
+}
 
 interface CommitRequestBody {
   sessionId: string
@@ -66,26 +130,55 @@ export async function POST(req: NextRequest) {
     return apiError('SESSION_CLOSED', 'This session is no longer active.', 400)
   }
 
-  if (sessionData.owner !== uid) {
-    return apiError('FORBIDDEN', 'Only the session owner can commit.', 403)
+  // Authorization: owner OR any participant listed in the session.
+  //
+  // Non-owners push under the OWNER's GitHub token (step 4 below), because
+  // the owner is the one with guaranteed push access to their repo. This is
+  // an explicit, accepted trade-off: commits will be attributed to the owner
+  // on GitHub regardless of who clicked the button, and the clicker appears
+  // only in the `Co-Authored-By:` trailer. See buildCommitMessage. If this
+  // ever becomes a public/multi-tenant product, switch to a per-user GitHub
+  // permission check + the clicker's own token instead.
+  const ownerUid = sessionData.owner as string
+  const isOwner = ownerUid === uid
+  const participants = (sessionData.participants ?? {}) as Record<string, unknown>
+  const isParticipant = uid in participants
+  if (!isOwner && !isParticipant) {
+    return apiError('FORBIDDEN', 'You are not a member of this session.', 403)
   }
 
   const repoOwner = sessionData.repoOwner as string
   const repoName  = sessionData.repo      as string
   const branch    = (sessionData.branch as string) || 'main'
 
-  // 4. Get GitHub token
+  // 4. Get GitHub token — always the SESSION OWNER's token, even when a
+  // participant initiated the commit. The owner is the one guaranteed to have
+  // push rights to `repoOwner/repoName`; a random joiner's token would 403.
   let token: string
   try {
-    token = await getGitHubToken(uid)
+    token = await getGitHubToken(ownerUid)
   } catch {
-    return apiError('GITHUB_ERROR', 'GitHub token not found. Please sign in again.', 401)
+    return apiError(
+      'GITHUB_ERROR',
+      isOwner
+        ? 'GitHub token not found. Please sign in again.'
+        : 'Session owner is not signed in to GitHub — cannot push on their behalf.',
+      isOwner ? 401 : 503,
+    )
   }
 
-  // 5. Build commit message with co-author credits
+  // 5. Build commit message with co-author credits.
+  //
+  // We pass `ownerUid` (not `uid`) as the committerId-to-exclude because the
+  // GitHub commit will be authored by the owner regardless of who clicked.
+  // If we passed `uid` here, a participant-initiated commit would exclude
+  // the clicker from co-authors AND not list them as the GitHub author —
+  // they'd vanish from attribution entirely. Excluding the owner instead
+  // ensures every non-owner editor (including the clicker) shows up as a
+  // Co-Authored-By trailer.
   let commitMessage: string
   try {
-    commitMessage = await buildCommitMessage(sessionId, uid, message.trim())
+    commitMessage = await buildCommitMessage(sessionId, ownerUid, message.trim())
   } catch {
     // Non-fatal — fall back to plain message
     commitMessage = message.trim()
@@ -135,6 +228,13 @@ export async function POST(req: NextRequest) {
   await adminDb.collection('sessions').doc(sessionId).update({
     lastDraftAt: null,
   })
+
+  // 9. Delete session drafts from Storage (fire-and-forget — don't fail commit on Storage errors)
+  try {
+    await deleteSessionDrafts(sessionId)
+  } catch (err) {
+    console.error('[POST /api/commits] Failed to delete drafts:', err)
+  }
 
   return apiSuccess({ commitSha, message: commitMessage })
 }

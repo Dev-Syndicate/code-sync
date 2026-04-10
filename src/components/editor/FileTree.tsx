@@ -33,12 +33,14 @@ interface FileTreeProps {
   className?: string
   repoOwner?: string | null
   repoName?: string | null
+  sessionId?: string | null
 }
 
 export function FileTree({
   className = '',
   repoOwner = null,
   repoName = null,
+  sessionId = null,
 }: FileTreeProps) {
   const files = useEditorStore((s) => s.files)
   const activeFile = useEditorStore((s) => s.activeFile)
@@ -92,6 +94,33 @@ export function FileTree({
         }
         // GitHub returns content base64-encoded. Decode to UTF-8 text.
         const decoded = decodeBase64Utf8(file.content)
+
+        // Draft restore: prefer saved draft over GitHub content when the draft
+        // is still current (originalSha matches the file's current GitHub sha).
+        if (sessionId) {
+          try {
+            const draftRes = await fetch(
+              `/api/sessions/${sessionId}/load-draft?path=${encodeURIComponent(path)}`,
+              { credentials: 'same-origin' }
+            )
+            if (draftRes.ok) {
+              const draftJson = await draftRes.json()
+              const draft = draftJson?.data?.draft
+              if (draft) {
+                if (draft.originalSha === file.sha) {
+                  openFile(path, language, draft.content, file.sha)
+                  return
+                } else {
+                  // Stale draft — file changed on GitHub since the draft was saved
+                  console.warn('[FileTree] stale draft discarded for', path)
+                }
+              }
+            }
+          } catch {
+            // Draft fetch failed — fall through to GitHub content
+          }
+        }
+
         openFile(path, language, decoded, file.sha)
       } catch (err) {
         console.error('[FileTree] file fetch threw:', err)
@@ -103,7 +132,7 @@ export function FileTree({
         })
       }
     },
-    [repoOwner, repoName, openFile]
+    [repoOwner, repoName, sessionId, openFile]
   )
 
   if (files.length === 0) {
