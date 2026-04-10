@@ -18,7 +18,7 @@ import { useFileEditorTracking } from '@/hooks/useFileEditorTracking'
 import { useAuth } from '@/hooks/useAuth'
 import { useDraftSave } from '@/hooks/useDraftSave'
 import { useEditorStore, type FileNode } from '@/store/editorStore'
-import { ChatPanel } from '@/components/chat/ChatPanel'
+import { RightSidebar } from '@/components/session/RightSidebar'
 import {
   ResizableHandle,
   ResizablePanel,
@@ -470,7 +470,7 @@ export default function SessionPage({
         {/* ── Right: Chat ── */}
         <ResizablePanel defaultSize={24} minSize={12} className="overflow-hidden">
           <div className="h-full min-w-0 overflow-hidden">
-            <ChatPanel sessionId={sessionId} />
+            <RightSidebar sessionId={sessionId} ydoc={ydoc} />
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
