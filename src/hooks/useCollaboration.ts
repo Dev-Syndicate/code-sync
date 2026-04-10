@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import * as Y from 'yjs'
-import type { WebrtcProvider } from 'y-webrtc'
+import type { WebsocketProvider } from 'y-websocket'
 import { createCollabProvider, destroyCollabProvider } from '@/lib/yjs/provider'
 import {
   setLocalAwareness,
@@ -20,7 +20,7 @@ interface UseCollaborationOptions {
 
 interface CollabSnapshot {
   ydoc: Y.Doc | null
-  provider: WebrtcProvider | null
+  provider: WebsocketProvider | null
   isReady: boolean
   remoteUsers: AwarenessUserState[]
 }
@@ -69,19 +69,14 @@ function createCollabStore(): CollabStore {
 }
 
 /**
- * Main collaboration hook — sets up Yjs doc, WebRTC provider, and awareness.
+ * Main collaboration hook — sets up Yjs doc, WebSocket provider, and awareness.
  *
  * Design notes:
  *
- * 1. The Yjs doc + WebrtcProvider are created in a useEffect keyed ONLY on
- *    sessionId. `y-webrtc` keeps a module-level `rooms` Map keyed by room
- *    name, and throws "A Yjs Doc connected to room … already exists!" if
- *    two providers ever share a room. That means (a) provider creation
- *    MUST happen in an effect (not useMemo / render) so React guarantees
- *    the previous provider's cleanup runs before the next one starts, and
- *    (b) identity fields (userId/username/avatar/color) must NOT be in the
- *    dep array — they change often and would force a teardown/recreate per
- *    profile update. Those are pushed via awareness instead.
+ * 1. The Yjs doc + WebsocketProvider are created in a useEffect keyed ONLY on
+ *    sessionId. Identity fields (userId/username/avatar/color) must NOT be in
+ *    the dep array — they change often and would force a teardown/recreate
+ *    per profile update. Those are pushed via awareness instead.
  *
  * 2. React 19 strict mode double-invokes effects in dev. The cleanup in the
  *    return of the setup effect runs between invocations, so the provider
@@ -91,6 +86,15 @@ function createCollabStore(): CollabStore {
  * 3. State is exposed to React via useSyncExternalStore against an
  *    imperative store. We deliberately avoid setState-in-effect so the
  *    React 19 cascading-render lint rule is happy.
+ *
+ * 4. `isReady` is flipped to true on the `synced` event, which fires after
+ *    the server has sent the initial doc state. That's the right moment to
+ *    show "ready to edit" — not `connected`, which only means the TCP
+ *    handshake completed. We previously had a 2s fallback timer that flipped
+ *    isReady anyway, lying to the UI when y-webrtc + signaling.yjs.dev
+ *    couldn't establish peers. With y-websocket that fallback is gone: if
+ *    the server is down you should see "Disconnected" in the status bar,
+ *    not "Connected / Solo editing".
  */
 export function useCollaboration(
   options: UseCollaborationOptions
@@ -119,25 +123,26 @@ export function useCollaboration(
       store.update({ remoteUsers: states })
     })
 
-    const handleStatus = ({ connected }: { connected: boolean }) => {
-      if (connected) {
+    // Connection status (connecting/connected/disconnected) is surfaced to
+    // the status bar via useConnectionStatus, which subscribes to the same
+    // provider's 'status' event separately. We don't flip isReady here on
+    // 'connected' — that fires before the server has replayed the doc state.
+    // Wait for 'sync' below instead.
+
+    // 'sync' fires when the server has sent us the initial Y.Doc state.
+    // After this, our local doc is caught up and Monaco can bind safely.
+    // (y-websocket emits both 'sync' and 'synced' with the same payload;
+    // 'sync' is the one declared in the public type definitions.)
+    const handleSynced = (isSynced: boolean) => {
+      if (isSynced) {
         store.update({ isReady: true })
       }
     }
-    prov.on('status', handleStatus)
-
-    // Fallback: mark ready after 2s even if the signaling server is slow,
-    // so the editor doesn't stay stuck in a loading state in offline dev.
-    const readyTimer = setTimeout(() => {
-      if (!store.getSnapshot().isReady) {
-        store.update({ isReady: true })
-      }
-    }, 2000)
+    prov.on('sync', handleSynced)
 
     return () => {
-      clearTimeout(readyTimer)
       unsubscribeAwareness()
-      prov.off('status', handleStatus)
+      prov.off('sync', handleSynced)
       destroyCollabProvider(prov)
       doc.destroy()
       store.set(EMPTY_SNAPSHOT)

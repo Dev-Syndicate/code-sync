@@ -1,19 +1,28 @@
 'use client'
 
 import { useMemo, useSyncExternalStore } from 'react'
-import type { WebrtcProvider } from 'y-webrtc'
+import type { WebsocketProvider } from 'y-websocket'
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 
 /**
- * Tracks the WebRTC provider's connection status via useSyncExternalStore.
- * Uses a container object for mutable state (React 19 immutability compliance).
+ * Tracks the Yjs WebSocket provider's connection status via
+ * useSyncExternalStore. The status bar reads from this.
+ *
+ * y-websocket emits a 'status' event with payload `{ status: 'connected'
+ * | 'disconnected' | 'connecting' }` whenever the underlying WebSocket's
+ * state changes. That's all we need — no 'peers' event like y-webrtc.
  */
 export function useConnectionStatus(
-  provider: WebrtcProvider | null
+  provider: WebsocketProvider | null
 ): ConnectionStatus {
   const store = useMemo(() => {
-    const state: { current: ConnectionStatus } = { current: 'connecting' }
+    // Seed the status from the provider's current wsconnected flag so the
+    // UI doesn't flash "connecting" when a cached provider is handed in.
+    const initial: ConnectionStatus = provider?.wsconnected
+      ? 'connected'
+      : 'connecting'
+    const state: { current: ConnectionStatus } = { current: initial }
     const listeners = new Set<() => void>()
 
     function notify() {
@@ -26,28 +35,27 @@ export function useConnectionStatus(
         listeners.add(listener)
 
         if (!provider) {
-          return () => listeners.delete(listener)
+          return () => {
+            listeners.delete(listener)
+          }
         }
 
-        const handleStatus = ({ connected }: { connected: boolean }) => {
-          state.current = connected ? 'connected' : 'disconnected'
-          notify()
-        }
-
-        const handlePeers = ({ added }: { added: string[] }) => {
-          if (added.length > 0) {
-            state.current = 'connected'
+        const handleStatus = ({ status }: { status: string }) => {
+          if (
+            status === 'connected' ||
+            status === 'disconnected' ||
+            status === 'connecting'
+          ) {
+            state.current = status
             notify()
           }
         }
 
         provider.on('status', handleStatus)
-        provider.on('peers', handlePeers)
 
         return () => {
           listeners.delete(listener)
           provider.off('status', handleStatus)
-          provider.off('peers', handlePeers)
         }
       },
     }

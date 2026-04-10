@@ -4,6 +4,7 @@
 import { type NextRequest } from 'next/server'
 import { apiSuccess, apiError } from '@/lib/api/response'
 import { getAuthContext, getGitHubToken } from '@/lib/api/auth'
+import { ensureUserDoc } from '@/lib/api/ensureUserDoc'
 import { fetchRepoFiles } from '@/lib/github/repos'
 import { adminDb } from '@/lib/firebase/admin'
 import { FieldValue } from 'firebase-admin/firestore'
@@ -48,21 +49,24 @@ export async function POST(req: NextRequest) {
     return apiError('FORBIDDEN', 'Session owner must match authenticated user.', 403)
   }
 
-  // 3. Get user profile for participant entry
+  // 3. Get user profile for participant entry. ensureUserDoc backfills the
+  // /users/{uid} doc from the Firebase Auth record if it's missing, so
+  // legacy accounts can still create sessions.
   let token: string
-  let userDoc: FirebaseFirestore.DocumentSnapshot
+  let userData: { username: string; avatar: string }
   try {
-    token   = await getGitHubToken(uid)
-    userDoc = await adminDb.collection('users').doc(uid).get()
+    token = await getGitHubToken(uid)
   } catch {
-    return apiError('GITHUB_ERROR', 'Could not retrieve user data.', 500)
+    return apiError('GITHUB_ERROR', 'Could not retrieve GitHub token. Please sign in again.', 401)
   }
 
-  if (!userDoc.exists) {
-    return apiError('NOT_FOUND', 'User profile not found.', 404)
+  try {
+    const ensured = await ensureUserDoc(uid)
+    userData = { username: ensured.username, avatar: ensured.avatar }
+  } catch (err) {
+    console.error('[POST /api/sessions] ensureUserDoc failed:', err)
+    return apiError('INTERNAL_ERROR', 'Could not retrieve user data.', 500)
   }
-
-  const userData = userDoc.data()!
 
   // 4. Load repo file list from GitHub
   let files: { path: string; sha: string; language: string }[] = []

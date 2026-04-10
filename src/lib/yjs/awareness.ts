@@ -1,4 +1,4 @@
-import type { WebrtcProvider } from 'y-webrtc'
+import type { WebsocketProvider } from 'y-websocket'
 import type { CursorPosition } from '@/types/editor'
 
 // ── Local awareness state shape ──
@@ -15,7 +15,7 @@ export interface AwarenessUserState {
  * Set the local user's awareness state (cursor position, file, color, etc.)
  */
 export function setLocalAwareness(
-  provider: WebrtcProvider,
+  provider: WebsocketProvider,
   state: AwarenessUserState
 ): void {
   provider.awareness.setLocalStateField('user', state)
@@ -25,7 +25,7 @@ export function setLocalAwareness(
  * Update just the cursor position in the local awareness state.
  */
 export function updateCursorPosition(
-  provider: WebrtcProvider,
+  provider: WebsocketProvider,
   cursor: CursorPosition,
   currentFile: string
 ): void {
@@ -40,7 +40,7 @@ export function updateCursorPosition(
  * Update which file the local user is currently viewing.
  */
 export function updateCurrentFile(
-  provider: WebrtcProvider,
+  provider: WebsocketProvider,
   currentFile: string
 ): void {
   provider.awareness.setLocalStateField('user', {
@@ -53,7 +53,7 @@ export function updateCurrentFile(
 /**
  * Get the local user's awareness state.
  */
-function getLocalState(provider: WebrtcProvider): AwarenessUserState {
+function getLocalState(provider: WebsocketProvider): AwarenessUserState {
   const local = provider.awareness.getLocalState()
   return (local?.user as AwarenessUserState) ?? {
     userId: '',
@@ -69,7 +69,7 @@ function getLocalState(provider: WebrtcProvider): AwarenessUserState {
  * Get all remote users' awareness states (excludes local).
  */
 export function getRemoteStates(
-  provider: WebrtcProvider
+  provider: WebsocketProvider
 ): AwarenessUserState[] {
   const states: AwarenessUserState[] = []
   const localClientId = provider.awareness.clientID
@@ -88,7 +88,7 @@ export function getRemoteStates(
  * Returns an unsubscribe function.
  */
 export function onAwarenessChange(
-  provider: WebrtcProvider,
+  provider: WebsocketProvider,
   callback: (remoteStates: AwarenessUserState[]) => void
 ): () => void {
   const handler = () => {
