@@ -135,7 +135,22 @@ async function loginWithGitHubInner(): Promise<User> {
   })
 
   if (!res.ok) {
-    throw new Error('Failed to create server session')
+    // Surface the actual server error instead of hiding it behind a generic
+    // message. The route handler returns { error: { code, message } } on
+    // every failure path, so read it and thread it through the thrown Error.
+    let detail = `HTTP ${res.status}`
+    try {
+      const json = (await res.json()) as {
+        error?: { code?: string; message?: string }
+      }
+      if (json?.error?.code || json?.error?.message) {
+        detail = `${json.error.code ?? 'UNKNOWN'}: ${json.error.message ?? 'no message'}`
+      }
+    } catch {
+      // body wasn't JSON — fall back to status
+    }
+    console.error('[loginWithGitHub] POST /api/auth/session failed:', detail)
+    throw new Error(`Failed to create server session (${detail})`)
   }
 
   return user
