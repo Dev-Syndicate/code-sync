@@ -30,6 +30,28 @@ export async function fetchRepoFiles(
   return treeData.tree.filter((item) => item.type === 'blob')
 }
 
+// ── List branches for a repository ────────────────────────────────────────────
+// GitHub paginates at 30 by default; 100 is the max per page and is plenty
+// for UI pickers. If a repo legitimately has >100 branches, the default
+// branch will still appear via the separate repo metadata, and the picker
+// will show the first 100 alphabetically.
+export interface GitHubBranch {
+  name: string
+  commit: { sha: string; url: string }
+  protected: boolean
+}
+
+export async function fetchRepoBranches(
+  token: string,
+  owner: string,
+  repo:  string,
+): Promise<GitHubBranch[]> {
+  return githubFetch<GitHubBranch[]>(
+    token,
+    `/repos/${owner}/${repo}/branches?per_page=100`,
+  )
+}
+
 // ── Fetch a single file's content and SHA ────────────────────────────────────
 export async function fetchFileContent(
   token:    string,

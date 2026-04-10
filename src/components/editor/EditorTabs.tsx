@@ -27,13 +27,15 @@ export function EditorTabs({ className = '' }: EditorTabsProps) {
   const setActiveFile = useEditorStore((s) => s.setActiveFile)
   const closeFile = useEditorStore((s) => s.closeFile)
 
+  // When there are no open files, render a thin spacer — not a "No files
+  // open" label. The editor's own empty state already tells the user what
+  // to do, so duplicating that string in the tab bar just creates noise.
   if (tabs.length === 0) {
     return (
       <div
-        className={`flex items-center px-4 h-9 border-b border-[var(--foreground)]/10 text-xs text-[var(--foreground)]/30 ${className}`}
-      >
-        No files open
-      </div>
+        className={`h-9 border-b border-[var(--foreground)]/10 ${className}`}
+        aria-hidden
+      />
     )
   }
 

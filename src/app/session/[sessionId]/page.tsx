@@ -2,7 +2,7 @@
 
 import { use, useState, useCallback, useEffect, useMemo } from 'react'
 import type { editor } from 'monaco-editor'
-import { MessageSquare, PanelRightClose } from 'lucide-react'
+import { FileText, MessageSquare, PanelRightClose, Sparkles } from 'lucide-react'
 import { CodeEditor } from '@/components/editor/CodeEditor'
 import { FileTree } from '@/components/editor/FileTree'
 import { EditorTabs } from '@/components/editor/EditorTabs'
@@ -323,6 +323,50 @@ export default function SessionPage({
     []
   )
 
+  // ── Host: end-session handler (wired to the SessionHeader menu) ──
+  //
+  // Confirmation is now owned by the SessionHeader's themed ConfirmDialog,
+  // so this handler is the raw API call — POST the end route and let the
+  // Firestore `active:false` listener redirect everyone (host included).
+  const isHost = !!ownerUid && ownerUid === user?.uid
+  const handleEndSession = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/end`, {
+        method: 'POST',
+        credentials: 'same-origin',
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        addToast('error', body?.error?.message ?? 'Failed to end session.')
+      }
+    } catch (err) {
+      console.error('[SessionPage] end session failed:', err)
+      addToast('error', 'Failed to end session.')
+    }
+  }, [sessionId, addToast])
+
+  // ── Participants for the header avatar row ──
+  //
+  // remoteUsers are the y-awareness states for everyone *else* — we
+  // prepend the local user so the row shows the full roster.
+  const headerParticipants = useMemo(
+    () => [
+      {
+        uid: currentUser.uid,
+        username: currentUser.username,
+        avatar: currentUser.avatar || undefined,
+        color: currentUser.color,
+      },
+      ...remoteUsers.map((u) => ({
+        uid: u.userId,
+        username: u.username,
+        avatar: u.avatar || undefined,
+        color: u.color,
+      })),
+    ],
+    [currentUser, remoteUsers],
+  )
+
   return (
     <div className="h-screen flex flex-col bg-background text-foreground overflow-hidden">
       {/* ── Top bar ── */}
@@ -332,6 +376,10 @@ export default function SessionPage({
           repoInfo ? `${repoInfo.owner}/${repoInfo.repo}` : undefined
         }
         branch={repoInfo?.branch}
+        participants={headerParticipants}
+        currentUserId={currentUser.uid}
+        isHost={isHost}
+        onEndSession={handleEndSession}
       />
 
       {/* ── Body: ActivityBar (fixed) + resizable panels ── */}
@@ -347,7 +395,6 @@ export default function SessionPage({
           onRevertSave={revertToLastSave}
           revertStatus={revertStatus}
           onCommitReverted={handleCommitReverted}
-          isHost={!!ownerUid && ownerUid === user?.uid}
         />
 
       <ResizablePanelGroup
@@ -401,48 +448,69 @@ export default function SessionPage({
                 <CodeEditor
                   path={activeTab.path}
                   language={activeTab.language}
+                  value={activeTab.content}
                   onMount={handleEditorMount}
                   settings={settings}
                 />
               ) : (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center text-white/30">
-                    <p className="text-lg font-medium">No file open</p>
-                    <p className="text-sm mt-1">
-                      Select a file from the explorer to start editing
+                <div className="flex h-full items-center justify-center p-8">
+                  <div className="max-w-sm text-center">
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-inset ring-primary/15">
+                      <FileText
+                        className="h-6 w-6 text-primary"
+                        strokeWidth={1.75}
+                        aria-hidden
+                      />
+                    </div>
+                    <p className="text-lg font-semibold text-foreground">
+                      No file open
                     </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Pick a file from the Explorer to start editing. Your
+                      changes sync live with everyone in the session.
+                    </p>
+                    <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 rounded-md border border-border bg-card/60 px-2 py-1">
+                        <kbd className="font-mono font-semibold text-foreground">
+                          Ctrl
+                        </kbd>
+                        <span>+</span>
+                        <kbd className="font-mono font-semibold text-foreground">
+                          S
+                        </kbd>
+                        <span className="ml-1">save draft</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-md border border-border bg-card/60 px-2 py-1">
+                        <Sparkles
+                          className="h-3 w-3 text-primary"
+                          strokeWidth={2.25}
+                          aria-hidden
+                        />
+                        AI Agent panel on the right
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
             </div>
 
             {/* ── Status bar ── */}
+            {/*
+              Connection state is deliberately NOT rendered here anymore —
+              the SessionHeader already shows "Live / Connecting / Offline"
+              at the top of the page, and duplicating it at the bottom was
+              just visual noise. The bottom bar focuses on session vitals
+              (collab count, save state) and the active-file metadata.
+            */}
             <div className="flex items-center justify-between px-3 h-6 text-[11px] bg-card border-t border-border text-muted-foreground shrink-0">
               <div className="flex items-center gap-3">
-                {/* Connection status */}
-                <span className="flex items-center gap-1.5">
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      connectionStatus === 'connected'
-                        ? 'bg-emerald-500'
-                        : connectionStatus === 'connecting'
-                          ? 'bg-yellow-500 animate-pulse'
-                          : 'bg-red-500'
-                    }`}
-                  />
-                  {connectionStatus === 'connected'
-                    ? 'Connected'
-                    : connectionStatus === 'connecting'
-                      ? 'Connecting...'
-                      : 'Disconnected'}
-                </span>
-
-                {/* Collab status */}
+                {/* Collab count — always visible once the provider is ready */}
                 {isReady && (
-                  <span>
-                    {remoteUsers.length > 0
-                      ? `${remoteUsers.length + 1} collaborators`
-                      : 'Solo editing'}
+                  <span className="flex items-center gap-1">
+                    <span className="font-semibold tabular-nums text-foreground">
+                      {remoteUsers.length + 1}
+                    </span>
+                    {remoteUsers.length > 0 ? 'in session' : 'solo'}
                   </span>
                 )}
 
@@ -452,6 +520,13 @@ export default function SessionPage({
                 {saveStatus === 'saved' && lastSavedAt && <span>Saved just now</span>}
                 {saveStatus === 'idle' && lastSavedAt && (
                   <span>Saved {formatRelativeTime(lastSavedAt)} ago</span>
+                )}
+
+                {/* Hint when no file is open — keeps the bar populated */}
+                {!activeTab && (
+                  <span className="text-muted-foreground/70">
+                    Select a file from the Explorer to begin
+                  </span>
                 )}
               </div>
 

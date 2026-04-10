@@ -1,8 +1,9 @@
 'use client'
 
 // Explorer header with VS Code-style action icons. Shown above the file
-// tree in the left sidebar. Icons appear on hover (matches VS Code) but
-// stay visible on small-screen / no-hover.
+// tree in the left sidebar. Actions are always visible (low-opacity at
+// rest, full-opacity on hover) so first-time users don't have to discover
+// them by hovering.
 
 import { FilePlus, FolderPlus, RefreshCw, ChevronsDownUp } from 'lucide-react'
 
@@ -11,6 +12,8 @@ interface Props {
   onNewFolder: () => void
   onRefresh: () => void
   onCollapseAll: () => void
+  /** File count shown as a small badge next to the EXPLORER label. */
+  fileCount?: number
 }
 
 interface ActionButton {
@@ -25,6 +28,7 @@ export function ExplorerHeader({
   onNewFolder,
   onRefresh,
   onCollapseAll,
+  fileCount,
 }: Props) {
   const actions: ActionButton[] = [
     { key: 'new-file', label: 'New File', icon: FilePlus, onClick: onNewFile },
@@ -50,10 +54,15 @@ export function ExplorerHeader({
         borderBottom: '1px solid var(--border-default, transparent)',
       }}
     >
-      <span className="text-xs font-semibold uppercase tracking-wider text-[var(--foreground)]/40">
+      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--foreground)]/40">
         Explorer
+        {typeof fileCount === 'number' && fileCount > 0 && (
+          <span className="rounded-full bg-[var(--foreground)]/8 px-1.5 py-0.5 text-[9px] font-bold tabular-nums text-[var(--foreground)]/55 normal-case tracking-normal">
+            {fileCount}
+          </span>
+        )}
       </span>
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-0.5 opacity-40 transition-opacity group-hover:opacity-100">
         {actions.map((a) => {
           const Icon = a.icon
           return (

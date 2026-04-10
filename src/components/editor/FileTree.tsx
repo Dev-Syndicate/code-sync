@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -130,6 +131,19 @@ export function FileTree({
   const addToast = useToastStore((s) => s.addToast)
 
   const ops = useFileTreeOps({ ydoc })
+
+  // Recursive file count (excludes folders) for the Explorer header badge.
+  const fileCount = useMemo(() => {
+    let n = 0
+    const walk = (nodes: FileNode[]) => {
+      for (const node of nodes) {
+        if (node.type === 'file') n += 1
+        if (node.children) walk(node.children)
+      }
+    }
+    walk(files)
+    return n
+  }, [files])
 
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -465,6 +479,7 @@ export function FileTree({
         onNewFolder={handleNewFolderAtRoot}
         onRefresh={handleRefresh}
         onCollapseAll={handleCollapseAll}
+        fileCount={fileCount}
       />
 
       <div

@@ -50,15 +50,21 @@ export function ChatPanel({ sessionId }: Props) {
         >
           Team Chat
         </span>
-        <span
-          style={{
-            marginLeft: 'auto',
-            fontSize:   'var(--text-xs)',
-            color:      'var(--text-muted)',
-          }}
-        >
-          {messages.filter((m) => m.type === 'message').length} messages
-        </span>
+        {(() => {
+          const count = messages.filter((m) => m.type === 'message').length
+          if (count === 0) return null
+          return (
+            <span
+              style={{
+                marginLeft: 'auto',
+                fontSize:   'var(--text-xs)',
+                color:      'var(--text-muted)',
+              }}
+            >
+              {count} message{count === 1 ? '' : 's'}
+            </span>
+          )
+        })()}
       </div>
 
       {/* ── Messages list ─────────────────────────────────────────────────── */}

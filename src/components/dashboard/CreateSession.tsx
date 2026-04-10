@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Book, Loader2, Play } from 'lucide-react'
 import {
@@ -43,8 +43,56 @@ export function CreateSession({ repo, isOpen, onClose }: CreateSessionProps) {
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Mock branches — replaced when Dev 4's branch API is ready
-  const branches = [repo.default_branch, 'develop', 'feature/dev1-auth', 'feature/dev2-dashboard']
+  // ── Branches ─────────────────────────────────────────────────────────
+  // Fetched from GET /api/repos?owner=X&repo=Y&branches=1 each time the
+  // modal opens. Before the fetch completes (or if it fails) we still
+  // want the picker to show at least the repo's default branch so the
+  // user can create a session — the dropdown degrades gracefully.
+  const [branches, setBranches] = useState<string[]>([repo.default_branch])
+  const [branchesLoading, setBranchesLoading] = useState(false)
+
+  useEffect(() => {
+    if (!isOpen) return
+    let cancelled = false
+    const ac = new AbortController()
+
+    setBranchesLoading(true)
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/repos?owner=${encodeURIComponent(repo.owner.login)}&repo=${encodeURIComponent(repo.name)}&branches=1`,
+          {
+            method: 'GET',
+            cache: 'no-store',
+            credentials: 'same-origin',
+            signal: ac.signal,
+          },
+        )
+        if (cancelled) return
+        if (!res.ok) {
+          // Leave the fallback (default branch) in place.
+          return
+        }
+        const json = await res.json()
+        if (!json?.success || !Array.isArray(json.data)) return
+        const names = (json.data as Array<{ name: string }>).map((b) => b.name)
+        // Put the default branch first; stable-sort the rest alphabetically.
+        const rest = names.filter((n) => n !== repo.default_branch).sort()
+        const ordered = [repo.default_branch, ...rest]
+        if (!cancelled) setBranches(ordered)
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        console.error('[CreateSession] fetch branches failed:', err)
+      } finally {
+        if (!cancelled) setBranchesLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+      ac.abort()
+    }
+  }, [isOpen, repo.owner.login, repo.name, repo.default_branch])
 
   async function handleCreate() {
     setIsCreating(true)
@@ -100,7 +148,15 @@ export function CreateSession({ repo, isOpen, onClose }: CreateSessionProps) {
 
         {/* Branch */}
         <div className="space-y-2">
-          <Label htmlFor="branch-select">Branch</Label>
+          <Label htmlFor="branch-select" className="flex items-center gap-2">
+            Branch
+            {branchesLoading && (
+              <Loader2
+                className="h-3 w-3 animate-spin text-muted-foreground"
+                aria-label="Loading branches"
+              />
+            )}
+          </Label>
           <Select value={branch} onValueChange={setBranch}>
             <SelectTrigger id="branch-select" className="w-full">
               <SelectValue />
