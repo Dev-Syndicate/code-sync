@@ -11,7 +11,7 @@
 
 import { NextResponse } from 'next/server'
 
-export async function GET() {
+export async function GET() { 
   return NextResponse.json(
     { message: 'Auth is handled by Firebase GitHub OAuth on the client (Dev 1).' },
     { status: 200 }
