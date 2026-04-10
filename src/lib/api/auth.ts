@@ -1,15 +1,18 @@
 // Server-side auth utilities for API routes
-// Verifies the session cookie and returns the Firebase UID
+// The session cookie stores the Firebase UID (set by Dev 1's loginWithGitHub)
+// We use the Admin SDK to verify the user exists in Firestore and get their data
 
 import { type NextRequest } from 'next/server'
-import { adminAuth, adminDb } from '@/lib/firebase/admin'
+import { adminDb } from '@/lib/firebase/admin'
 
 export interface AuthContext {
   uid:   string
   email: string | undefined
 }
 
-// ── Verify session cookie → returns AuthContext or throws ─────────────────────
+// ── Read the session cookie → return AuthContext or throw ─────────────────────
+// Dev 1 sets cookie as: document.cookie = `session=${uid}; ...`
+// So the cookie value IS the Firebase UID — we just verify it exists in Firestore
 export async function getAuthContext(req: NextRequest): Promise<AuthContext> {
   const sessionCookie = req.cookies.get('session')?.value
 
@@ -17,10 +20,19 @@ export async function getAuthContext(req: NextRequest): Promise<AuthContext> {
     throw new Error('AUTH_REQUIRED')
   }
 
+  // sessionCookie = Firebase UID (set by Dev 1's auth.ts)
+  const uid = decodeURIComponent(sessionCookie)
+
+  // Validate user actually exists in Firestore
   try {
-    const decoded = await adminAuth.verifyIdToken(sessionCookie)
-    return { uid: decoded.uid, email: decoded.email }
-  } catch {
+    const userSnap = await adminDb.collection('users').doc(uid).get()
+    if (!userSnap.exists) {
+      throw new Error('AUTH_EXPIRED')
+    }
+    const data = userSnap.data()
+    return { uid, email: data?.email }
+  } catch (err) {
+    if (err instanceof Error && err.message === 'AUTH_EXPIRED') throw err
     throw new Error('AUTH_EXPIRED')
   }
 }

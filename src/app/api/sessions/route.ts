@@ -31,7 +31,14 @@ export async function POST(req: NextRequest) {
     return apiError('VALIDATION_ERROR', 'Invalid request body.', 400)
   }
 
-  const { repo, repoOwner, repoUrl, branch = 'main', owner, maxParticipants = 4 } = body
+  const { repo, repoOwner, repoUrl, branch = 'main', owner, maxParticipants = 4 } = body as {
+    repo:             string
+    repoOwner:        string
+    repoUrl:          string
+    branch?:          string
+    owner:            string
+    maxParticipants?: number
+  }
 
   if (!repo || !repoOwner || !repoUrl || !owner) {
     return apiError('VALIDATION_ERROR', 'repo, repoOwner, repoUrl, and owner are required.', 400)
