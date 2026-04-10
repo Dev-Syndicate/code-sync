@@ -19,7 +19,7 @@ const primaryNav = [
 
 const secondaryNav = [
   { label: 'Settings', icon: Settings, href: '/dashboard/profile' },
-  { label: 'Help', icon: HelpCircle, href: '#help' },
+  { label: 'Help', icon: HelpCircle, href: '/dashboard/help' },
 ]
 
 export function Sidebar() {
@@ -133,14 +133,12 @@ export function Sidebar() {
             <p className="mb-3 text-[11px] leading-relaxed text-white/75">
               Real-time coding with your team, powered by GitHub.
             </p>
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href="/dashboard/help"
               className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-emerald-800 transition-colors hover:bg-white/90"
             >
               Learn more
-            </a>
+            </Link>
           </div>
         </div>
       </div>
