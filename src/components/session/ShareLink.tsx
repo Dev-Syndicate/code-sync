@@ -63,7 +63,7 @@ export function ShareLink({
               size="sm"
               onClick={handleCopy}
             >
-              {copied ? '✓ Copied!' : '📋 Copy'}
+              {copied ? '✓ Copied!' : 'Copy'}
             </Button>
           </div>
         </div>

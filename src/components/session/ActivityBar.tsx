@@ -4,7 +4,7 @@ import { useState } from 'react'
 import {
   DoorOpen,
   Files,
-  GitCommitHorizontal,
+  GitBranch,
   History,
   Save,
   Share2,
@@ -169,7 +169,7 @@ export function ActivityBar({
             onClick={() => setShowHistoryModal(true)}
           />
           <ActivityItem
-            icon={GitCommitHorizontal}
+            icon={GitBranch}
             label="Commit & Push"
             primary
             onClick={() => setShowCommitModal(true)}
