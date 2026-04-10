@@ -28,7 +28,6 @@ interface RecentSessionsProps {
 export function RecentSessions({ sessions, max = 5 }: RecentSessionsProps) {
   const router = useRouter()
 
-  // Sort by lastDraftAt desc, fallback to createdAt
   const recent = [...sessions]
     .sort((a, b) => {
       const aTime = (a.lastDraftAt ?? a.createdAt)?.toDate?.().getTime() ?? 0
@@ -41,21 +40,21 @@ export function RecentSessions({ sessions, max = 5 }: RecentSessionsProps) {
 
   return (
     <section className="mb-10">
-      <div className="mb-3.5 flex items-center gap-2">
+      <div className="mb-4 flex items-center gap-2">
         <History className="h-4 w-4 text-muted-foreground" aria-hidden />
-        <h2 className="text-base font-bold">Recent Sessions</h2>
+        <h2 className="text-lg font-bold text-foreground">Recent Sessions</h2>
       </div>
-      <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide">
+      <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide">
         {recent.map((session) => {
           const lastActive = (session.lastDraftAt ?? session.createdAt)?.toDate?.() ?? new Date()
           return (
             <Card
               key={session.id}
-              className="group relative flex min-w-[260px] snap-start flex-col gap-3 p-4 transition-all hover:-translate-y-0.5 hover:ring-1 hover:ring-primary/40"
+              className="group relative flex min-w-[260px] snap-start flex-col gap-3 p-4 transition-all hover:-translate-y-0.5 hover:border-[#0f5132]/40 hover:shadow-md"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-[var(--color-brand-mint)]">
+                  <p className="truncate text-sm font-bold text-foreground">
                     {session.repo}
                   </p>
                   <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
@@ -63,7 +62,7 @@ export function RecentSessions({ sessions, max = 5 }: RecentSessionsProps) {
                   </p>
                 </div>
                 {session.active && (
-                  <span className="shrink-0 rounded-full bg-[#408A71]/15 px-2 py-0.5 text-[10px] font-semibold text-[#B0E4CC]">
+                  <span className="shrink-0 rounded-full bg-[#dcfce7] px-2 py-0.5 text-[10px] font-bold text-[#0f5132]">
                     Live
                   </span>
                 )}
@@ -76,7 +75,7 @@ export function RecentSessions({ sessions, max = 5 }: RecentSessionsProps) {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7 gap-1 px-2 text-xs"
+                  className="h-7 gap-1 rounded-full px-2.5 text-xs font-semibold text-[#0f5132] hover:bg-[#dcfce7] hover:text-[#0f5132]"
                   onClick={() => router.push(`/session/${session.id}`)}
                 >
                   <Play className="h-3 w-3 fill-current" aria-hidden />

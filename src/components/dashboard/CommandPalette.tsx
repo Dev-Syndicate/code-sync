@@ -74,21 +74,21 @@ export function CommandPalette({
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Open command palette"
-        className="group hidden items-center gap-2 rounded-lg border border-border bg-card/60 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:flex md:w-72"
+        className="group hidden h-10 w-full max-w-[420px] items-center gap-2.5 rounded-full border border-border/70 bg-card px-4 text-sm text-muted-foreground shadow-sm transition-all hover:border-[#0f5132]/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex"
       >
         <Search className="h-4 w-4" aria-hidden />
         <span className="flex-1 text-left">Search or jump to…</span>
-        <kbd className="pointer-events-none hidden items-center gap-0.5 rounded border border-border bg-background px-1.5 font-mono text-[10px] font-semibold text-muted-foreground md:inline-flex">
+        <kbd className="pointer-events-none hidden items-center gap-0.5 rounded-md border border-border/70 bg-muted px-1.5 font-mono text-[10px] font-semibold text-muted-foreground md:inline-flex">
           <span className="text-xs">⌘</span>K
         </kbd>
       </button>
 
-      {/* Icon-only trigger for mobile */}
+      {/* Icon-only trigger for mobile/tablet */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Open command palette"
-        className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card/60 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:hidden"
+        className="flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground shadow-sm transition-colors hover:border-[#0f5132]/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
       >
         <Search className="h-4 w-4" />
       </button>
@@ -128,7 +128,7 @@ export function CommandPalette({
                     value={`session ${session.repo} ${session.branch}`}
                     onSelect={() => run(() => router.push(`/session/${session.id}`))}
                   >
-                    <Users className="mr-2 h-4 w-4 text-[#B0E4CC]" aria-hidden />
+                    <Users className="mr-2 h-4 w-4 text-[#0f5132]" aria-hidden />
                     <span className="flex-1 truncate">{session.repo}</span>
                     <span className="ml-2 text-[11px] text-muted-foreground">
                       {session.branch}

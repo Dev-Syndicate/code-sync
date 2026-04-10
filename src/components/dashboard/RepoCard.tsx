@@ -63,11 +63,10 @@ export function RepoCard({ repo, viewMode, isPinned, onStartSession, onTogglePin
       onClick={() => onStartSession(repo)}
       className={cn(
         'group relative cursor-pointer transition-all duration-200',
-        'hover:-translate-y-0.5 hover:ring-1 hover:ring-primary/40',
-        'hover:shadow-[0_8px_24px_-12px_rgba(64,138,113,0.45)]',
+        'hover:-translate-y-0.5 hover:border-[#0f5132]/40 hover:shadow-md',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-        isPinned && 'ring-1 ring-primary/30 bg-gradient-to-br from-card to-[#408A71]/[0.05]',
-        isGrid ? 'p-5 flex flex-col gap-3.5' : 'p-4 px-5 flex flex-row items-center gap-5'
+        isPinned && 'border-[#0f5132]/30 bg-gradient-to-br from-card to-[#dcfce7]/30',
+        isGrid ? 'flex flex-col gap-3.5 p-5' : 'flex flex-row items-center gap-5 p-4 px-5'
       )}
     >
       {/* Pin button — absolute top-right */}
@@ -80,7 +79,7 @@ export function RepoCard({ repo, viewMode, isPinned, onStartSession, onTogglePin
         aria-label={isPinned ? 'Unpin repository' : 'Pin repository'}
         aria-pressed={isPinned}
         className={cn(
-          'absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-md transition-all',
+          'absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-lg transition-all',
           'opacity-0 group-hover:opacity-100',
           isPinned && 'opacity-100',
           'hover:bg-accent focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
@@ -88,24 +87,24 @@ export function RepoCard({ repo, viewMode, isPinned, onStartSession, onTogglePin
       >
         <Star
           className={cn(
-            'h-3.5 w-3.5 transition-colors',
-            isPinned ? 'fill-[#B0E4CC] text-[#B0E4CC]' : 'text-muted-foreground'
+            'h-4 w-4 transition-colors',
+            isPinned ? 'fill-[#0f5132] text-[#0f5132]' : 'text-muted-foreground'
           )}
         />
       </button>
 
       {/* Repo info */}
-      <div className="flex-1 min-w-0 pr-8">
+      <div className="min-w-0 flex-1 pr-8">
         {/* Name + badges row */}
-        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+        <div className="mb-1.5 flex flex-wrap items-center gap-2">
           <Book className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-          <span className="truncate text-[15px] font-semibold text-[var(--color-brand-mint)]">
+          <span className="truncate text-[15px] font-bold text-foreground">
             {repo.name}
           </span>
 
           <Badge
             variant="outline"
-            className="text-[11px] font-medium text-muted-foreground border-border"
+            className="border-border/70 bg-muted/50 text-[11px] font-medium text-muted-foreground"
           >
             {repo.private ? 'Private' : 'Public'}
           </Badge>
@@ -113,7 +112,7 @@ export function RepoCard({ repo, viewMode, isPinned, onStartSession, onTogglePin
           {repo.fork && (
             <Badge
               variant="outline"
-              className="text-[11px] font-medium text-muted-foreground border-border gap-1"
+              className="gap-1 border-border/70 bg-muted/50 text-[11px] font-medium text-muted-foreground"
             >
               <GitFork className="h-3 w-3" aria-hidden />
               Fork
@@ -125,7 +124,7 @@ export function RepoCard({ repo, viewMode, isPinned, onStartSession, onTogglePin
         {repo.description && (
           <p
             className={cn(
-              'text-[13px] leading-relaxed text-muted-foreground mb-2.5 overflow-hidden',
+              'mb-2.5 overflow-hidden text-[13px] leading-relaxed text-muted-foreground',
               isGrid ? 'line-clamp-2' : 'line-clamp-1'
             )}
           >
@@ -134,11 +133,11 @@ export function RepoCard({ repo, viewMode, isPinned, onStartSession, onTogglePin
         )}
 
         {/* Meta row: language + stars + updated */}
-        <div className="flex items-center gap-4 flex-wrap text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
           {repo.language && (
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 font-medium">
               <span
-                className="inline-block h-2.5 w-2.5 rounded-full"
+                className="inline-block h-2.5 w-2.5 rounded-full ring-2 ring-background"
                 style={{ background: getLanguageColor(repo.language) }}
                 aria-hidden
               />
@@ -147,13 +146,13 @@ export function RepoCard({ repo, viewMode, isPinned, onStartSession, onTogglePin
           )}
 
           {repo.stargazers_count > 0 && (
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1 font-medium">
               <Star className="h-3.5 w-3.5" aria-hidden />
               {repo.stargazers_count}
             </span>
           )}
 
-          <span className="text-muted-foreground/80">
+          <span className="text-muted-foreground/70">
             Updated {getRelativeTime(repo.updated_at)}
           </span>
         </div>
@@ -166,7 +165,7 @@ export function RepoCard({ repo, viewMode, isPinned, onStartSession, onTogglePin
           e.stopPropagation()
           onStartSession(repo)
         }}
-        className="shrink-0 gap-1.5"
+        className="shrink-0 gap-1.5 rounded-full bg-[#0f5132] font-semibold text-white shadow-sm hover:bg-[#0a3d25]"
       >
         <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
         Start Session

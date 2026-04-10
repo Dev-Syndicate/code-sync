@@ -33,25 +33,24 @@ export function SessionCard({ session }: SessionCardProps) {
         }
       }}
       className={cn(
-        'group cursor-pointer p-4 transition-all duration-200',
-        'hover:-translate-y-0.5 hover:ring-1 hover:ring-[#B0E4CC]/40',
-        'hover:shadow-[0_8px_24px_-12px_rgba(176,228,204,0.25)]',
+        'group cursor-pointer p-5 transition-all duration-200',
+        'hover:-translate-y-0.5 hover:border-[#0f5132]/40 hover:shadow-md',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
       )}
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex min-w-0 items-center gap-2">
           <Circle
-            className="h-2 w-2 shrink-0 fill-emerald-500 text-emerald-500 animate-pulse"
+            className="h-2 w-2 shrink-0 animate-pulse fill-[#22c55e] text-[#22c55e]"
             aria-hidden
           />
-          <span className="truncate text-sm font-semibold text-foreground">
+          <span className="truncate text-sm font-bold text-foreground">
             {session.repo}
           </span>
         </div>
         <Badge
           variant="secondary"
-          className="bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/20 border-0"
+          className="border-0 bg-[#dcfce7] font-semibold text-[#0f5132] hover:bg-[#bbf7d0]"
         >
           Live
         </Badge>
@@ -63,29 +62,29 @@ export function SessionCard({ session }: SessionCardProps) {
             {participantList.slice(0, 3).map((p, i) => (
               <Avatar
                 key={i}
-                className="h-7 w-7 border-2 border-card ring-0"
+                className="h-8 w-8 border-2 border-card ring-0"
                 title={p.username}
               >
                 <AvatarImage src={p.avatar} alt={p.username} />
                 <AvatarFallback
                   style={{ background: p.color }}
-                  className="text-[10px] font-bold text-white"
+                  className="text-[11px] font-bold text-white"
                 >
                   {p.username.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
             ))}
           </div>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs font-medium text-muted-foreground">
             {participantCount}/{session.maxParticipants}
           </span>
         </div>
 
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <GitBranch className="h-3 w-3" aria-hidden />
-          <span className="truncate max-w-[100px]">{session.branch}</span>
+          <span className="max-w-[100px] truncate font-medium">{session.branch}</span>
           <ArrowRight
-            className="h-3 w-3 ml-1 opacity-0 -translate-x-1 transition-all group-hover:opacity-100 group-hover:translate-x-0"
+            className="ml-1 h-3 w-3 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100"
             aria-hidden
           />
         </div>

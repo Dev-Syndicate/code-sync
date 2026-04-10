@@ -1,42 +1,42 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* ═══ BASE THEME — Forest Green palette ═══ */
+/* ═══ BASE THEME — Donezo-inspired Light / Forest Green ═══ */
 :root {
   /* ─── Brand Colors ─── */
-  --color-primary:        #408A71;  /* medium emerald — primary brand */
-  --color-primary-hover:  #4fa486;
-  --color-primary-light:  #B0E4CC;  /* mint — soft accent */
-  --color-primary-dark:   #285A48;  /* dark forest — deep brand */
+  --color-primary:        #0f5132;  /* deep forest — primary brand */
+  --color-primary-hover:  #0a3d25;
+  --color-primary-light:  #bbf7d0;  /* mint — soft accent */
+  --color-primary-dark:   #064e3b;  /* darker emerald */
 
-  --color-accent:         #B0E4CC;  /* light mint — highlights */
-  --color-accent-hover:   #a0d9bf;
+  --color-accent:         #22c55e;  /* vivid green — highlights */
+  --color-accent-hover:   #16a34a;
   --color-danger:         #ef4444;
   --color-warning:        #f59e0b;
-  --color-success:        #408A71;
+  --color-success:        #22c55e;
 
-  /* ─── Background ─── */
-  --bg-base:              #091413;  /* near-black, green-tinted */
-  --bg-surface:           #0f211c;  /* slight lift — card surface */
-  --bg-elevated:          #285A48;  /* forest green — elevated hover */
-  --bg-overlay:           rgba(9, 20, 19, 0.75);
+  /* ─── Background (light theme) ─── */
+  --bg-base:              #f6f7f9;  /* soft off-white page bg */
+  --bg-surface:           #ffffff;  /* pure white cards */
+  --bg-elevated:          #f1f5f4;  /* hover / active nav item */
+  --bg-overlay:           rgba(17, 24, 39, 0.5);
 
-  /* ─── Text ─── */
-  --text-primary:         #e8f5f0;  /* near-white mint tint */
-  --text-secondary:       #8fb5a6;  /* muted sage */
-  --text-muted:           #4f7367;  /* dark muted green */
-  --text-inverse:         #091413;
+  /* ─── Text (dark on light) ─── */
+  --text-primary:         #111827;  /* near-black */
+  --text-secondary:       #6b7280;  /* muted gray */
+  --text-muted:           #9ca3af;  /* lighter gray */
+  --text-inverse:         #ffffff;
 
   /* ─── Borders ─── */
-  --border-default:       #1a3329;  /* subtle dark green */
-  --border-subtle:        #0f211c;
-  --border-strong:        #285A48;
+  --border-default:       #e5e7eb;  /* neutral-200 */
+  --border-subtle:        #f3f4f6;  /* neutral-100 */
+  --border-strong:        #d1d5db;  /* neutral-300 */
 
-  /* ─── Editor ─── */
-  --editor-bg:            #091413;
-  --editor-sidebar:       #0f211c;
-  --editor-tab-active:    #285A48;
-  --editor-tab-inactive:  #0f211c;
+  /* ─── Editor (keep dark for code) ─── */
+  --editor-bg:            #0d1117;
+  --editor-sidebar:       #161b22;
+  --editor-tab-active:    #1e293b;
+  --editor-tab-inactive:  #0d1117;
 
   /* ─── Spacing Scale ─── */
   --space-1:  4px;
@@ -49,9 +49,9 @@
   --space-16: 64px;
 
   /* ─── Border Radius ─── */
-  --radius-sm:   4px;
-  --radius-md:   8px;
-  --radius-lg:   12px;
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
   --radius-full: 9999px;
 
   /* ─── Typography ─── */
@@ -66,10 +66,10 @@
   --text-2xl:  24px;
   --text-3xl:  30px;
 
-  /* ─── Shadows ─── */
-  --shadow-sm:  0 1px 2px rgba(0,0,0,0.4);
-  --shadow-md:  0 4px 6px rgba(0,0,0,0.5);
-  --shadow-lg:  0 10px 15px rgba(0,0,0,0.6);
+  /* ─── Shadows (lighter for light theme) ─── */
+  --shadow-sm:  0 1px 2px rgba(17, 24, 39, 0.04);
+  --shadow-md:  0 4px 12px rgba(17, 24, 39, 0.06);
+  --shadow-lg:  0 12px 28px rgba(17, 24, 39, 0.08);
 
   /* ─── Transitions ─── */
   --transition-fast:   150ms ease;
@@ -90,33 +90,33 @@
   /* ─── shadcn/ui tokens → aliased to custom tokens ─── */
   --card:                  var(--bg-surface);
   --card-foreground:       var(--text-primary);
-  --popover:               #102820;
+  --popover:               #ffffff;
   --popover-foreground:    var(--text-primary);
   --primary:               var(--color-primary);
-  --primary-foreground:    #091413;
-  --secondary:             var(--bg-elevated);
+  --primary-foreground:    #ffffff;
+  --secondary:             #f3f4f6;
   --secondary-foreground:  var(--text-primary);
-  --muted:                 var(--bg-surface);
+  --muted:                 #f3f4f6;
   --muted-foreground:      var(--text-secondary);
   --accent:                var(--bg-elevated);
-  --accent-foreground:     var(--text-primary);
+  --accent-foreground:     var(--color-primary);
   --destructive:           var(--color-danger);
   --destructive-foreground:#ffffff;
   --border:                var(--border-default);
   --input:                 var(--border-default);
   --ring:                  var(--color-primary);
-  --radius:                0.625rem;
+  --radius:                0.75rem;
   --chart-1:               var(--color-primary);
   --chart-2:               var(--color-accent);
   --chart-3:               var(--color-warning);
   --chart-4:               var(--color-danger);
   --chart-5:               var(--color-success);
-  --sidebar:                       var(--bg-surface);
+  --sidebar:                       #ffffff;
   --sidebar-foreground:            var(--text-primary);
   --sidebar-primary:               var(--color-primary);
-  --sidebar-primary-foreground:    #091413;
+  --sidebar-primary-foreground:    #ffffff;
   --sidebar-accent:                var(--bg-elevated);
-  --sidebar-accent-foreground:     var(--text-primary);
+  --sidebar-accent-foreground:     var(--color-primary);
   --sidebar-border:                var(--border-default);
   --sidebar-ring:                  var(--color-primary);
 }
@@ -166,10 +166,10 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* Custom brand tint — used by mint accent utilities */
-  --color-brand-mint: #B0E4CC;
-  --color-brand-forest: #285A48;
-  --color-brand-emerald: #408A71;
+  /* Brand accent utilities — Donezo green */
+  --color-brand-mint: #0f5132;       /* deep forest — brand text */
+  --color-brand-forest: #0a3d25;     /* darker forest */
+  --color-brand-emerald: #22c55e;    /* vivid accent */
 }
 
 body {
