@@ -21,11 +21,28 @@ interface SessionRequestBody {
 // 7 days — the maximum Firebase allows for session cookies is 14 days.
 const SESSION_COOKIE_MAX_AGE_MS = 60 * 60 * 24 * 7 * 1000
 
-export async function GET() {
-  return NextResponse.json(
-    { message: 'POST { idToken, accessToken } to create a session.' },
-    { status: 200 }
-  )
+// GET /api/auth/session
+// Real session probe used by syncServerSession() on the client. Returns 200
+// if the `session` cookie is present and verifies against Firebase Admin,
+// 401 otherwise. Do NOT turn this into a stub again — the login page's
+// redirect decision depends on it returning 401 for unauthenticated users
+// and 200 for authenticated ones without side effects on other routes.
+export async function GET(req: NextRequest) {
+  const sessionCookie = req.cookies.get('session')?.value
+  if (!sessionCookie) {
+    return apiError('AUTH_REQUIRED', 'No session cookie.', 401)
+  }
+
+  try {
+    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true)
+    return NextResponse.json(
+      { success: true, data: { uid: decoded.uid } },
+      { status: 200 }
+    )
+  } catch (err) {
+    console.error('[GET /api/auth/session] verify failed:', err)
+    return apiError('AUTH_EXPIRED', 'Session expired or invalid.', 401)
+  }
 }
 
 export async function POST(req: NextRequest) {

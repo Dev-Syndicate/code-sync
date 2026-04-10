@@ -143,7 +143,8 @@ export async function GET(req: NextRequest) {
   try {
     const ctx = await getAuthContext(req)
     uid = ctx.uid
-  } catch {
+  } catch (err) {
+    console.error('[GET /api/sessions] auth failed:', err)
     return apiError('AUTH_REQUIRED', 'Authentication required.', 401)
   }
 
