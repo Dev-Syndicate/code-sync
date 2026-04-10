@@ -2323,3 +2323,403 @@ export default nextConfig
 - [ ] optimizePackageImports enabled for Monaco + Firebase
 - [ ] No console.log() left in production (use conditional logging)
 ```
+
+---
+
+## 21. Merge Conflict Prevention
+
+> **The #1 reason student teams fail is merge conflicts that spiral out of control.** This section exists to prevent that. Follow every rule here.
+
+### 21.1 Conflict Hotspot Analysis
+
+These are the files where merge conflicts WILL happen if not managed:
+
+```
+🔴 HIGH RISK — Multiple devs will need to touch these:
+   app/layout.tsx           ← Every dev needs to add providers/wrappers
+   package.json             ← Every dev needs new dependencies
+   types/index.ts           ← Every dev needs to export their types
+   .env.example             ← Every dev might add new env vars
+   globals.css              ← Multiple devs may add new CSS variables
+
+🟡 MEDIUM RISK — Occasionally shared:
+   components/ui/*          ← Any dev might need a new shared component
+   tailwind.config.ts       ← Rarely changes, but possible
+   next.config.ts           ← Rarely changes
+
+🟢 LOW RISK — Each dev owns their own:
+   components/auth/*        ← Only Dev 1
+   components/dashboard/*   ← Only Dev 2
+   components/editor/*      ← Only Dev 3
+   components/chat/*        ← Only Dev 4
+   All hooks, stores, lib/* ← Clear ownership
+```
+
+### 21.2 Solution: The Providers Pattern
+
+The biggest conflict source is `layout.tsx`. Every dev needs to wrap the app with their provider (Auth, Session, Toast, etc.). 
+
+**Fix:** Create a `Providers` component so `layout.tsx` is touched ONCE and never again.
+
+```tsx
+// components/providers/AppProviders.tsx — Dev 1 creates, then each dev adds their own
+
+'use client'
+
+import { type ReactNode } from 'react'
+import { AuthProvider } from '@/components/providers/AuthProvider'
+import { ToastProvider } from '@/components/providers/ToastProvider'
+// ↑ Each dev adds their import here (one line each = easy merge)
+
+interface Props {
+  children: ReactNode
+}
+
+export function AppProviders({ children }: Props) {
+  return (
+    <AuthProvider>        {/* Dev 1 adds */}
+      <ToastProvider>     {/* Dev 1 adds */}
+        {children}
+      </ToastProvider>
+    </AuthProvider>
+  )
+}
+```
+
+```tsx
+// app/layout.tsx — Dev 1 sets up ONCE, never needs editing again
+
+import { AppProviders } from '@/components/providers/AppProviders'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
+import './globals.css'
+
+export const metadata = {
+  title: 'CodeSync',
+  description: 'Collaborative coding platform',
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <ErrorBoundary>
+          <AppProviders>
+            {children}
+          </AppProviders>
+        </ErrorBoundary>
+      </body>
+    </html>
+  )
+}
+// ✅ This file is DONE. No dev ever needs to edit it again.
+```
+
+**Each dev creates their own provider file:**
+
+```
+components/providers/
+  ├── AppProviders.tsx        ← Wraps all providers (merge point, but simple)
+  ├── AuthProvider.tsx        ← Dev 1 creates & owns
+  └── ToastProvider.tsx       ← Dev 1 creates & owns
+```
+
+> When a dev needs a new provider (e.g. Dev 2 needs a `SessionProvider`), they:
+> 1. Create `components/providers/SessionProvider.tsx` (their own file, no conflict)
+> 2. Add ONE import line + ONE wrapper line in `AppProviders.tsx` (tiny change, easy merge)
+
+### 21.3 Solution: Shared File Protocols
+
+#### `package.json` — Dependency Installs
+
+```
+RULE: Only Dev 1 runs `npm install`
+
+Process:
+  1. Dev 2 needs `zustand` → Messages group chat: "Need zustand"
+  2. Dev 1 runs: npm install zustand
+  3. Dev 1 commits package.json + package-lock.json
+  4. Dev 1 pushes to develop
+  5. Everyone pulls develop into their branch
+  6. Everyone runs: npm install (to sync lock file)
+
+WHY: package-lock.json is 5000+ lines. If two devs install packages
+on different branches, the merge conflict is UNFIXABLE.
+```
+
+#### `globals.css` — Theme Variables
+
+```
+RULE: Use commented sections. Each dev adds ONLY at the end of their section.
+
+/* ═══ BASE THEME — Dev 1 owns ═══ */
+--color-primary: #2563eb;
+...
+
+/* ═══ EDITOR THEME — Dev 3 owns ═══ */
+--editor-cursor-width: 2px;
+...
+
+/* ═══ CHAT THEME — Dev 4 owns ═══ */
+--chat-bubble-bg: #1e293b;
+...
+
+WHY: If devs add variables in the middle of the file, lines shift
+and Git can't auto-merge. Adding at the end of owned sections avoids this.
+```
+
+#### `types/` — Shared TypeScript Types
+
+```
+RULE: Each dev owns their own type files. Only ADD to the barrel export.
+
+types/
+  ├── user.ts       ← Dev 1 owns
+  ├── session.ts    ← Dev 2 owns
+  ├── editor.ts     ← Dev 3 owns
+  ├── chat.ts       ← Dev 4 owns
+  ├── github.ts     ← Dev 4 owns
+  ├── presence.ts   ← Dev 3 owns
+  ├── api.ts        ← Dev 4 owns
+  ├── draft.ts      ← Dev 3 owns
+  ├── toast.ts      ← Dev 1 owns
+  └── index.ts      ← Barrel (append-only)
+
+PROCESS for adding a new type:
+  1. Create your own new file: types/webhook.ts (no conflict)
+  2. Add ONE line to index.ts: export * from './webhook'
+     (append at end = minimal conflict risk)
+
+NEVER modify another dev's type file without asking.
+```
+
+#### `components/ui/` — Shared UI Components
+
+```
+RULE: Create new UI components freely. Editing existing ones = ask first.
+
+SAFE (no conflict):
+  ✅ Creating components/ui/Tooltip.tsx     ← New file = no conflict
+  ✅ Creating components/ui/Dropdown.tsx    ← New file = no conflict
+
+DANGEROUS (discuss first):
+  ⚠️ Editing components/ui/Button.tsx       ← Other devs may be using it
+  ⚠️ Adding new props to Modal.tsx          ← Might break other usages
+
+PROCESS for editing shared UI:
+  1. Message group chat: "I need to add `size` prop to Button.tsx"
+  2. Wait for acknowledgment
+  3. Make change on a SEPARATE commit (not mixed with feature work)
+  4. Push immediately so others can pull
+```
+
+#### `.env.example` — Environment Variables
+
+```
+RULE: Use commented sections, same as globals.css.
+
+# ═══ Firebase (Dev 1 manages) ═══
+NEXT_PUBLIC_FIREBASE_API_KEY=
+...
+
+# ═══ GitHub OAuth (Dev 4 manages) ═══
+GITHUB_CLIENT_ID=
+...
+
+# ═══ WebRTC / TURN (Dev 3 manages) ═══
+NEXT_PUBLIC_TURN_URL=
+...
+
+PROCESS: Add your variables at the end of YOUR section only.
+```
+
+### 21.4 Integration Contracts
+
+When two devs need to connect their work, define the **contract** (interface) FIRST, then build independently.
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│              INTEGRATION POINTS & CONTRACTS                  │
+│                                                              │
+│  Connection              Contract Owner    Agreed Interface  │
+│  ──────────────────────  ──────────────    ────────────────  │
+│                                                              │
+│  Auth → Dashboard        Dev 1 exports     useAuth() hook    │
+│    Dev 2 needs user      → { user, loading, login, logout }  │
+│    data on dashboard     Dev 2 imports & uses it             │
+│                                                              │
+│  Dashboard → Session     Dev 2 exports     createSession()   │
+│    clicking a repo       → returns sessionId                 │
+│    creates a session     Dev 3 reads session from Firestore  │
+│                                                              │
+│  Session → Editor        Dev 3 owns both   Internal wiring   │
+│    session page loads    No contract needed (same dev)        │
+│    the editor                                                │
+│                                                              │
+│  Editor → Chat           Dev 3 exports     editorStore       │
+│    chat shows which      → { activeFile, participants }      │
+│    file each user is on  Dev 4 reads from store              │
+│                                                              │
+│  Auth → API Routes       Dev 1 exports     session cookie    │
+│    API routes need to    → cookie name: 'session'            │
+│    verify user identity  Dev 4 reads cookie in API routes    │
+│                                                              │
+│  API Routes → GitHub     Dev 4 owns both   Internal wiring   │
+│    API routes call       No contract needed (same dev)        │
+│    GitHub API                                                │
+│                                                              │
+│  Editor → Commit         Dev 3 provides    editorStore       │
+│    commit button reads   → { files, dirtyFiles }             │
+│    current file state    Dev 4 reads from store for commit   │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 21.5 Contract-First Development Pattern
+
+Before building a feature that crosses dev boundaries, agree on the interface:
+
+```ts
+// STEP 1: Dev 1 creates the hook signature (even if empty)
+// hooks/useAuth.ts
+
+export function useAuth() {
+  // TODO: implement
+  return {
+    user: null as User | null,
+    loading: true,
+    isAuthenticated: false,
+    login: async () => {},
+    logout: async () => {},
+  }
+}
+
+// STEP 2: Dev 2 can now build the dashboard using this hook
+// Dev 2 doesn't need to wait for Dev 1 to finish auth
+// The dashboard works with loading: true until auth is ready
+
+// STEP 3: Dev 1 implements the real logic later
+// Dev 2's code doesn't need to change because the interface is the same
+```
+
+### 21.6 Day-1 Setup Order (Prevents Early Conflicts)
+
+```
+HOUR 1 — Dev 1 alone (everyone else waits)
+  ✅ npx create-next-app@latest ./ --typescript --tailwind --eslint --app
+  ✅ Set up folder structure (all empty folders with .gitkeep)
+  ✅ Set up globals.css with theme variables
+  ✅ Set up layout.tsx with AppProviders
+  ✅ Set up middleware.ts (skeleton)
+  ✅ Create all type files (empty exports)
+  ✅ Create .env.example with sections
+  ✅ Create .gitignore
+  ✅ Commit all → push to main
+  ✅ Create develop branch from main → push
+
+HOUR 2 — Everyone starts
+  ✅ Dev 1: git checkout -b feature/dev1-auth develop
+  ✅ Dev 2: git checkout -b feature/dev2-dashboard develop
+  ✅ Dev 3: git checkout -b feature/dev3-editor develop
+  ✅ Dev 4: git checkout -b feature/dev4-api develop
+
+  Each dev now works in their own files. ZERO overlap.
+
+HOUR 3+ — Independent work
+  Each dev builds in their own folders.
+  Dependency requests go through group chat → Dev 1 installs.
+  Type changes go through owned type files.
+  Shared UI components are created as NEW files (no editing existing ones).
+```
+
+### 21.7 Conflict Resolution Protocol
+
+```
+When a conflict DOES happen (inevitable):
+
+Step 1 — STOP. Don't try to resolve blindly.
+Step 2 — Message the other dev: "I have a conflict in [filename]"
+Step 3 — Get on a call / screen share
+Step 4 — The dev who OWNS the file resolves the conflict
+Step 5 — Both devs verify the resolved file works
+Step 6 — Commit the resolution with message: "fix: resolve merge conflict in [file]"
+
+NEVER:
+  ❌ Accept "mine" or "theirs" without understanding both changes
+  ❌ Resolve conflicts in files you don't own
+  ❌ Commit a conflict resolution without testing
+```
+
+### 21.8 Updated Folder Structure (with conflict-safe additions)
+
+```
+codesync/
+│
+├── components/
+│   ├── providers/                    # ── CONFLICT-SAFE PATTERN ──
+│   │   ├── AppProviders.tsx          # Dev 1 creates; minimal merge point
+│   │   ├── AuthProvider.tsx          # Dev 1 owns
+│   │   └── ToastProvider.tsx         # Dev 1 owns
+│   │   (other devs add their own provider files here — no conflict)
+│   │
+│   ├── auth/                         # ── DEV 1 only ──
+│   ├── dashboard/                    # ── DEV 2 only ──
+│   ├── session/                      # ── DEV 3 only ──
+│   ├── editor/                       # ── DEV 3 only ──
+│   ├── chat/                         # ── DEV 4 only ──
+│   └── ui/                           # ── NEW files ok, EDITING needs discussion ──
+│
+├── types/                            # ── Each dev owns specific files ──
+│   ├── user.ts                       # Dev 1
+│   ├── session.ts                    # Dev 2
+│   ├── editor.ts                     # Dev 3
+│   ├── chat.ts                       # Dev 4
+│   ├── github.ts                     # Dev 4
+│   ├── presence.ts                   # Dev 3
+│   ├── api.ts                        # Dev 4
+│   ├── draft.ts                      # Dev 3
+│   ├── toast.ts                      # Dev 1
+│   └── index.ts                      # Barrel (append-only, one line per file)
+│
+├── hooks/                            # ── Each dev owns their hooks ──
+│   ├── useAuth.ts                    # Dev 1 — exports contract for Dev 2
+│   ├── useRepos.ts                   # Dev 2
+│   ├── useSession.ts                 # Dev 2
+│   ├── useEditor.ts                  # Dev 3 — exports contract for Dev 4
+│   ├── useCollaboration.ts           # Dev 3
+│   ├── useFileEditorTracking.ts      # Dev 3
+│   ├── useChat.ts                    # Dev 4
+│   └── useConnectionStatus.ts        # Dev 3
+│
+└── store/                            # ── Each dev owns their store ──
+    ├── authStore.ts                  # Dev 1 — exports contract for Dev 2, 4
+    ├── repoStore.ts                  # Dev 2
+    ├── sessionStore.ts               # Dev 2 — exports contract for Dev 3
+    ├── editorStore.ts                # Dev 3 — exports contract for Dev 4
+    └── toastStore.ts                 # Dev 1
+```
+
+### 21.9 Quick Reference Card
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║              MERGE CONFLICT CHEAT SHEET                      ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  DO:                                                         ║
+║  ✅ Create new files instead of editing shared ones           ║
+║  ✅ Add at the end of shared files (globals.css, .env)        ║
+║  ✅ Agree on interfaces before building cross-dev features    ║
+║  ✅ Pull develop into your branch every morning               ║
+║  ✅ Make small, focused commits (not giant ones)              ║
+║  ✅ Push your branch daily (even if not done)                 ║
+║                                                              ║
+║  DON'T:                                                      ║
+║  ❌ Edit layout.tsx (use AppProviders instead)                ║
+║  ❌ Run npm install yourself (ask Dev 1)                      ║
+║  ❌ Modify another dev's type file without asking             ║
+║  ❌ Edit existing shared UI components without group chat     ║
+║  ❌ Work for 3 days without merging develop into your branch  ║
+║  ❌ Commit package-lock.json changes alongside feature code   ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+```
