@@ -1,16 +1,12 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { doc, onSnapshot } from 'firebase/firestore'
+import { db } from '@/lib/firebase/config'
 import { useSessionStore } from '@/store/sessionStore'
 import { joinSession as joinSessionApi } from '@/lib/session/join'
 import { useAuth } from '@/hooks/useAuth'
 import type { Session, Participant } from '@/types'
-import { Timestamp } from 'firebase/firestore'
-
-// ────────────────────────────────────────────────
-// TODO: REMOVE MOCK — flip to false when Firestore session listener is ready
-const USE_MOCK = true
-// ────────────────────────────────────────────────
 
 /**
  * useSession — Integration contract for Dev 3
@@ -20,88 +16,57 @@ const USE_MOCK = true
  */
 export function useSession(sessionId: string) {
   const { user } = useAuth()
-  const { setCurrentSession, setLoading, setError } = useSessionStore()
+  const { setCurrentSession } = useSessionStore()
   const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLocalLoading] = useState(true)
-  const [error, setLocalError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Fetch session data
+  // Real-time Firestore listener for session data
   useEffect(() => {
-    let cancelled = false
-
-    async function loadSession() {
-      setLocalLoading(true)
-      setLocalError(null)
-
-      try {
-        if (USE_MOCK) {
-          await new Promise((resolve) => setTimeout(resolve, 500))
-          if (cancelled) return
-
-          const mockSession: Session = {
-            id: sessionId,
-            repo: 'code-sync',
-            repoOwner: 'devuser',
-            repoUrl: 'https://github.com/devuser/code-sync',
-            branch: 'main',
-            owner: 'owner-uid-123',
-            participants: {
-              'owner-uid-123': {
-                username: 'sessionowner',
-                avatar: 'https://avatars.githubusercontent.com/u/2?v=4',
-                color: '#ef4444',
-                joinedAt: Timestamp.now(),
-              },
-              'user-uid-456': {
-                username: 'collaborator1',
-                avatar: 'https://avatars.githubusercontent.com/u/3?v=4',
-                color: '#22c55e',
-                joinedAt: Timestamp.now(),
-              },
-            },
-            files: [
-              { path: 'src/index.ts', language: 'typescript', sha: 'abc123' },
-              { path: 'src/app.tsx', language: 'typescriptreact', sha: 'def456' },
-              { path: 'README.md', language: 'markdown', sha: 'ghi789' },
-            ],
-            active: true,
-            maxParticipants: 4,
-            createdAt: Timestamp.now(),
-            closedAt: null,
-            lastDraftAt: null,
-          }
-
-          setSession(mockSession)
-          setCurrentSession(mockSession)
-        } else {
-          // Real Firestore fetch — will be replaced with onSnapshot listener
-          const res = await fetch(`/api/sessions/${sessionId}`)
-          const json = await res.json()
-
-          if (!cancelled) {
-            if (json.success) {
-              setSession(json.data)
-              setCurrentSession(json.data)
-            } else {
-              setLocalError(json.error?.message ?? 'Session not found')
-            }
-          }
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setLocalError('Failed to load session')
-        }
-      } finally {
-        if (!cancelled) {
-          setLocalLoading(false)
-        }
-      }
+    if (!sessionId) {
+      setLoading(false)
+      setError('No session ID provided')
+      return
     }
 
-    loadSession()
+    setLoading(true)
+    setError(null)
+
+    const sessionRef = doc(db, 'sessions', sessionId)
+    const unsubscribe = onSnapshot(
+      sessionRef,
+      (snap) => {
+        if (!snap.exists()) {
+          setSession(null)
+          setCurrentSession(null)
+          setError('Session not found')
+          setLoading(false)
+          return
+        }
+
+        const sessionData: Session = {
+          id: snap.id,
+          ...snap.data(),
+        } as Session
+
+        // Check if session is still active
+        if (!sessionData.active) {
+          setError('This session has been closed')
+        }
+
+        setSession(sessionData)
+        setCurrentSession(sessionData)
+        setLoading(false)
+      },
+      (err) => {
+        console.error('[useSession] Firestore error:', err)
+        setError('Failed to load session')
+        setLoading(false)
+      }
+    )
 
     return () => {
-      cancelled = true
+      unsubscribe()
     }
   }, [sessionId, setCurrentSession])
 
@@ -128,19 +93,18 @@ export function useSession(sessionId: string) {
   const leaveSession = useCallback(async () => {
     if (!user || !session) return
 
-    // Remove user from participants locally
-    const updatedParticipants = { ...session.participants }
-    delete updatedParticipants[user.uid]
+    try {
+      // Import dynamically to avoid circular deps
+      const { updateDoc, doc: firestoreDoc, deleteField } = await import('firebase/firestore')
+      const sessionRef = firestoreDoc(db, 'sessions', session.id)
+      await updateDoc(sessionRef, {
+        [`participants.${user.uid}`]: deleteField(),
+      })
 
-    const updatedSession: Session = {
-      ...session,
-      participants: updatedParticipants,
+      setCurrentSession(null)
+    } catch (err) {
+      console.error('[useSession] leaveSession failed:', err)
     }
-
-    setSession(updatedSession)
-    setCurrentSession(null)
-
-    // TODO: Call Firestore to persist the leave action when real backend is ready
   }, [user, session, setCurrentSession])
 
   // ⚠️ FROZEN RETURN SHAPE — matches DEV-RULES.md contract exactly
