@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Modal } from '@/components/ui/Modal'
-import { Button } from '@/components/ui/Button'
+import { Modal } from '@/components/ui/legacy/Modal'
+import { Button } from '@/components/ui/legacy/Button'
 
 interface ShareLinkProps {
   isOpen: boolean

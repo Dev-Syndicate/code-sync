@@ -43,7 +43,7 @@ function LoginContent() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)',
+        background: 'linear-gradient(135deg, #091413 0%, #102820 50%, #091413 100%)',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -58,8 +58,23 @@ function LoginContent() {
           width: '600px',
           height: '600px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(37, 99, 235, 0.15) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(64, 138, 113, 0.22) 0%, transparent 70%)',
           filter: 'blur(60px)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Secondary mint glow */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '10%',
+          right: '15%',
+          width: '400px',
+          height: '400px',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(176, 228, 204, 0.08) 0%, transparent 70%)',
+          filter: 'blur(80px)',
           pointerEvents: 'none',
         }}
       />
@@ -70,12 +85,12 @@ function LoginContent() {
           maxWidth: '420px',
           width: '100%',
           padding: '48px 40px',
-          background: 'rgba(30, 41, 59, 0.6)',
+          background: 'rgba(15, 33, 28, 0.7)',
           backdropFilter: 'blur(20px)',
           borderRadius: '20px',
-          border: '1px solid rgba(255, 255, 255, 0.06)',
+          border: '1px solid rgba(176, 228, 204, 0.08)',
           textAlign: 'center',
-          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.4)',
+          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(64, 138, 113, 0.08)',
         }}
       >
         {/* Logo / Branding */}
@@ -92,13 +107,14 @@ function LoginContent() {
               width: '40px',
               height: '40px',
               borderRadius: '10px',
-              background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+              background: 'linear-gradient(135deg, #285A48, #408A71)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: '20px',
               fontWeight: 700,
-              color: '#ffffff',
+              color: '#B0E4CC',
+              boxShadow: '0 8px 24px -8px rgba(64, 138, 113, 0.5)',
             }}
           >
             {'</>'}
@@ -107,11 +123,11 @@ function LoginContent() {
             style={{
               fontSize: '28px',
               fontWeight: 700,
-              color: '#f1f5f9',
+              color: '#e8f5f0',
               letterSpacing: '-0.5px',
             }}
           >
-            CodeSync
+            <span style={{ color: '#B0E4CC' }}>Code</span>Sync
           </span>
         </div>
 
@@ -119,7 +135,7 @@ function LoginContent() {
           style={{
             fontSize: '20px',
             fontWeight: 600,
-            color: '#f1f5f9',
+            color: '#e8f5f0',
             marginBottom: '8px',
           }}
         >
@@ -129,7 +145,7 @@ function LoginContent() {
         <p
           style={{
             fontSize: '14px',
-            color: '#94a3b8',
+            color: '#8fb5a6',
             marginBottom: '36px',
             lineHeight: 1.6,
           }}
@@ -146,7 +162,7 @@ function LoginContent() {
         <p
           style={{
             fontSize: '12px',
-            color: '#475569',
+            color: '#4f7367',
             marginTop: '28px',
             lineHeight: 1.5,
           }}
@@ -170,8 +186,8 @@ export default function LoginPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: '#0f172a',
-            color: '#94a3b8',
+            background: '#091413',
+            color: '#8fb5a6',
           }}
         >
           Loading...
