@@ -6,6 +6,7 @@ import { apiSuccess, apiError } from '@/lib/api/response'
 import { getAuthContext, getGitHubToken } from '@/lib/api/auth'
 import { ensureUserDoc } from '@/lib/api/ensureUserDoc'
 import { fetchRepoFiles } from '@/lib/github/repos'
+import { inferLanguage } from '@/lib/github/inferLanguage'
 import { adminDb } from '@/lib/firebase/admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { GitHubApiError } from '@/lib/github/api'
@@ -184,19 +185,5 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// ── Language inference from file extension ────────────────────────────────────
-function inferLanguage(path: string): string {
-  const ext = path.split('.').pop()?.toLowerCase() ?? ''
-  const map: Record<string, string> = {
-    ts: 'typescript', tsx: 'typescript',
-    js: 'javascript', jsx: 'javascript',
-    py: 'python', rs: 'rust', go: 'go',
-    java: 'java', cpp: 'cpp', c: 'c',
-    cs: 'csharp', rb: 'ruby', php: 'php',
-    html: 'html', css: 'css', json: 'json',
-    md: 'markdown', yaml: 'yaml', yml: 'yaml',
-    sh: 'shell', sql: 'sql', kt: 'kotlin',
-    swift: 'swift', dart: 'dart',
-  }
-  return map[ext] ?? 'plaintext'
-}
+// inferLanguage moved to @/lib/github/inferLanguage so the refresh-tree
+// endpoint can share the same mapping.
