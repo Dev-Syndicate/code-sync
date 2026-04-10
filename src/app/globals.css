@@ -130,13 +130,13 @@
 /* ═══════════════════════════════════════════════════════════ */
 .dark {
   /* ─── Brand Colors ─── */
-  --color-primary:        #22c55e;  /* green-500 — lighter for dark contrast */
-  --color-primary-hover:  #16a34a;  /* green-600 */
-  --color-primary-light:  #14532d;  /* green-900 */
-  --color-primary-dark:   #15803d;
+  --color-primary:        #047857;  /* emerald-700 — matches Live Collab card */
+  --color-primary-hover:  #065f46;  /* emerald-800 */
+  --color-primary-light:  #064e3b;  /* emerald-900 */
+  --color-primary-dark:   #022c22;
 
-  --color-accent:         #4ade80;  /* green-400 */
-  --color-accent-hover:   #22c55e;
+  --color-accent:         #10b981;  /* emerald-500 */
+  --color-accent-hover:   #059669;
 
   /* ─── Background ─── */
   --bg-base:              #09090b;  /* zinc-950 */
@@ -168,7 +168,7 @@
   --popover:               #1f1f23;
   --popover-foreground:    var(--text-primary);
   --primary:               var(--color-primary);
-  --primary-foreground:    #052e16;
+  --primary-foreground:    #ffffff;
   --secondary:             var(--bg-elevated);
   --secondary-foreground:  var(--text-primary);
   --muted:                 var(--bg-elevated);
@@ -183,7 +183,7 @@
   --sidebar:                       var(--bg-surface);
   --sidebar-foreground:            var(--text-primary);
   --sidebar-primary:               var(--color-primary);
-  --sidebar-primary-foreground:    #052e16;
+  --sidebar-primary-foreground:    #ffffff;
   --sidebar-accent:                var(--bg-elevated);
   --sidebar-accent-foreground:     var(--text-primary);
   --sidebar-border:                var(--border-default);
