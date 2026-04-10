@@ -32,13 +32,13 @@ export function RightSidebar({ sessionId, ydoc }: Props) {
       }}
     >
       <SidebarTabs active={active} onChange={setActive} />
-      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+      <div style={{ flex: 1, minHeight: 0, minWidth: 0, display: 'flex' }}>
         {active === 'team' ? (
-          <div style={{ flex: 1, minHeight: 0 }}>
+          <div style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
             <ChatPanel sessionId={sessionId} />
           </div>
         ) : (
-          <div style={{ flex: 1, minHeight: 0 }}>
+          <div style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
             <AgentPanel sessionId={sessionId} ydoc={ydoc} />
           </div>
         )}

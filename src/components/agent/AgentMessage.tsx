@@ -30,6 +30,8 @@ export function AgentMessage({
         display: 'flex',
         flexDirection: 'column',
         gap: 'var(--space-1)',
+        minWidth: 0,
+        maxWidth: '100%',
       }}
     >
       <div

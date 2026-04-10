@@ -27,6 +27,7 @@ export function AgentPanel({ sessionId, ydoc }: Props) {
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
+        minWidth: 0,
         background: 'var(--bg-surface)',
       }}
     >
@@ -65,7 +66,9 @@ export function AgentPanel({ sessionId, ydoc }: Props) {
       <div
         style={{
           flex: 1,
+          minWidth: 0,
           overflowY: 'auto',
+          overflowX: 'hidden',
           paddingTop: 'var(--space-2)',
           paddingBottom: 'var(--space-2)',
         }}

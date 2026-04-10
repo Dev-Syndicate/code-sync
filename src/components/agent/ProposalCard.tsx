@@ -84,6 +84,8 @@ export function ProposalCard({
         background: 'var(--bg-base, #0b0f19)',
         overflow: 'hidden',
         fontSize: 'var(--text-xs)',
+        minWidth: 0,
+        maxWidth: '100%',
       }}
     >
       {/* Header */}
@@ -146,7 +148,9 @@ export function ProposalCard({
       <div
         style={{
           maxHeight: 240,
-          overflow: 'auto',
+          overflowY: 'auto',
+          overflowX: 'auto',
+          maxWidth: '100%',
           fontFamily: 'var(--font-mono, monospace)',
           fontSize: '11px',
           lineHeight: 1.5,
