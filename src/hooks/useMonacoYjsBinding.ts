@@ -76,23 +76,50 @@ export function useMonacoYjsBinding({
     // import keeps it client-only — same reason CodeEditor lazy-loads Monaco.
     void import('y-monaco').then(({ MonacoBinding }) => {
       if (cancelled) return
+
+      // ── Seed the Y.Text with the GitHub-fetched content, once ──────────
+      //
+      // Seeding MUST happen before constructing MonacoBinding, otherwise
+      // the binding first wipes the Monaco model to the (empty) ytext, then
+      // streams the insert back in. That intermediate empty-model window
+      // desyncs Monaco's internal line count from peers for a tick and can
+      // manifest as remote-selection highlights landing on the wrong line.
+      //
+      // Double-seed race: two peers both opening the file concurrently can
+      // each observe `ytext.length === 0` and both insert, duplicating the
+      // content and producing an N-line drift between clients — which is
+      // exactly the "selection on wrong line" bug this comment exists to
+      // prevent. We gate the seed on a Y.Map flag (`file-init:<path>`):
+      // concurrent `set` operations are idempotent in Yjs, and whichever
+      // peer wins the `has()` check first inserts — the loser skips.
+      // Even if both peers race past `has()` (possible within a single
+      // microtask), the flag being in the SAME transaction as the insert
+      // means a merged remote state will carry the flag, so on reconnect
+      // we never re-seed.
+      const initFlags = ydoc.getMap<boolean>('file-init')
+      const flagKey = activeFile
+      const seed = initialContentRef.current
+      if (
+        !initFlags.has(flagKey) &&
+        ytext.length === 0 &&
+        seed &&
+        seed.length > 0
+      ) {
+        ydoc.transact(() => {
+          // Re-check inside the transaction to narrow the race window.
+          if (!initFlags.has(flagKey) && ytext.length === 0) {
+            ytext.insert(0, seed)
+            initFlags.set(flagKey, true)
+          }
+        })
+      }
+
       binding = new MonacoBinding(
         ytext,
         model,
         new Set([editor]),
         provider.awareness
       )
-
-      // Seed on first open: if nobody has touched this file yet, insert the
-      // GitHub-fetched content so late joiners still see something. If the
-      // Y.Text already has content (another peer opened it first), we leave
-      // it alone and the binding pulls the peer's state into the editor.
-      const seed = initialContentRef.current
-      if (ytext.length === 0 && seed && seed.length > 0) {
-        ydoc.transact(() => {
-          ytext.insert(0, seed)
-        })
-      }
     })
 
     // Mirror Y.Text → Zustand tab content so save/draft/dirty flows keep

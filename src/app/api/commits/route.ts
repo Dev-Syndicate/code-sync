@@ -88,6 +88,9 @@ interface CommitRequestBody {
   sessionId: string
   message:   string
   files:     (CommitFile & { sha?: string })[]
+  /** Paths to remove from the repo in this commit. Each gets translated
+   *  into a `sha: null` Git Tree API entry. Optional; defaults to []. */
+  deletes?:  string[]
 }
 
 export async function POST(req: NextRequest) {
@@ -108,14 +111,33 @@ export async function POST(req: NextRequest) {
     return apiError('VALIDATION_ERROR', 'Invalid request body.', 400)
   }
 
-  const { sessionId, message, files } = body
+  const { sessionId, message, files, deletes = [] } = body
 
   if (!sessionId || !message?.trim()) {
     return apiError('VALIDATION_ERROR', 'sessionId and message are required.', 400)
   }
 
-  if (!files?.length) {
-    return apiError('VALIDATION_ERROR', 'No files to commit.', 400)
+  // A commit must do SOMETHING — either upsert files or remove paths.
+  if (!files?.length && deletes.length === 0) {
+    return apiError(
+      'VALIDATION_ERROR',
+      'No files to commit and no deletes requested.',
+      400
+    )
+  }
+
+  // Lightly validate deletes: strings, non-empty, no path-traversal weirdness.
+  if (
+    !Array.isArray(deletes) ||
+    deletes.some(
+      (p) =>
+        typeof p !== 'string' ||
+        !p.trim() ||
+        p.includes('..') ||
+        p.startsWith('/')
+    )
+  ) {
+    return apiError('VALIDATION_ERROR', 'Invalid deletes payload.', 400)
   }
 
   // 3. Load session doc — get repo details and verify ownership
@@ -185,7 +207,10 @@ export async function POST(req: NextRequest) {
   }
 
   // 6. Commit to GitHub via Git Tree API
-  const commitPayload: CommitFile[] = files.map(({ path, content }) => ({ path, content }))
+  const commitPayload: CommitFile[] = (files ?? []).map(({ path, content }) => ({
+    path,
+    content,
+  }))
 
   let commitSha: string
   try {
@@ -195,6 +220,7 @@ export async function POST(req: NextRequest) {
       repo:    repoName,
       branch,
       files:   commitPayload,
+      deletes,
       message: commitMessage,
     })
   } catch (err) {

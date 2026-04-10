@@ -92,6 +92,7 @@ function ActivityItem({
 
 export function ActivityBar({
   sessionId,
+  participantCount,
   filesOpen,
   onToggleFiles,
   onSave,
@@ -190,6 +191,7 @@ export function ActivityBar({
         isOpen={showShareModal}
         onClose={() => setShowShareModal(false)}
         sessionId={sessionId}
+        participantCount={participantCount}
       />
       <CommitModal
         isOpen={showCommitModal}

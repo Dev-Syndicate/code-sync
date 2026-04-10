@@ -4,7 +4,13 @@ export interface EditorTab {
   content: string
   isActive: boolean
   isDirty: boolean
-  originalSha: string
+  /**
+   * The GitHub blob SHA this tab was opened from, or `null` for files that
+   * were created locally in the Explorer and have never been committed. The
+   * commit API already accepts undefined SHAs and treats them as new files;
+   * the draft autosave path persists `null` as-is in storage metadata.
+   */
+  originalSha: string | null
 }
 
 export interface CursorPosition {

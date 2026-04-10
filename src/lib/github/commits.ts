@@ -110,14 +110,38 @@ async function getBaseTreeSha(
   return commit.tree.sha
 }
 
-// ── Step 4: Create a new tree with updated file blobs ────────────────────────
+// ── Step 4: Create a new tree with updated file blobs + deletions ────────────
+// GitHub's Git Tree API represents a deletion as a tree entry with
+// `sha: null`, which removes that path from the resulting tree. We build
+// one combined tree payload containing adds/updates (as blob SHAs) AND
+// deletes (as null SHAs). `base_tree` inherits everything else unchanged.
 async function createTree(
   token:       string,
   owner:       string,
   repo:        string,
   baseTreeSha: string,
-  fileBlobs:   { path: string; sha: string }[]
+  fileBlobs:   { path: string; sha: string }[],
+  deletePaths: string[] = []
 ): Promise<string> {
+  const tree: Array<{
+    path: string
+    mode: '100644'
+    type: 'blob'
+    sha: string | null
+  }> = [
+    ...fileBlobs.map(({ path, sha }) => ({
+      path,
+      mode: '100644' as const,
+      type: 'blob' as const,
+      sha,
+    })),
+    ...deletePaths.map((path) => ({
+      path,
+      mode: '100644' as const,
+      type: 'blob' as const,
+      sha: null,
+    })),
+  ]
   const res = await githubFetch<TreeResponse>(
     token,
     `/repos/${owner}/${repo}/git/trees`,
@@ -125,12 +149,7 @@ async function createTree(
       method: 'POST',
       body: JSON.stringify({
         base_tree: baseTreeSha,
-        tree: fileBlobs.map(({ path, sha }) => ({
-          path,
-          mode: '100644',   // normal file
-          type: 'blob',
-          sha,
-        })),
+        tree,
       }),
     }
   )
@@ -177,12 +196,23 @@ export interface CommitFilesParams {
   owner:   string
   repo:    string
   branch:  string
+  /** Files to add or update (upsert). New files — ones that didn't exist on
+   *  GitHub before — are just adds; existing files are updates. GitHub's
+   *  Git Tree API treats both identically. */
   files:   CommitFile[]
+  /** Paths to remove from the tree. Each becomes a `sha: null` tree entry,
+   *  which GitHub interprets as "delete this path from the tree." Safe to
+   *  pass paths that don't exist on GitHub — they'll be no-ops. */
+  deletes?: string[]
   message: string
 }
 
 export async function commitFiles(params: CommitFilesParams): Promise<string> {
-  const { token, owner, repo, branch, files, message } = params
+  const { token, owner, repo, branch, files, deletes = [], message } = params
+
+  if (files.length === 0 && deletes.length === 0) {
+    throw new GitHubApiError('Nothing to commit: no files or deletes.', 400)
+  }
 
   // 1. Get current HEAD
   const headSha    = await getHeadCommitSha(token, owner, repo, branch)
@@ -196,8 +226,15 @@ export async function commitFiles(params: CommitFilesParams): Promise<string> {
     }))
   )
 
-  // 3. Create new tree
-  const newTreeSha = await createTree(token, owner, repo, baseTreeSha, fileBlobs)
+  // 3. Create new tree (includes both upserts and deletes)
+  const newTreeSha = await createTree(
+    token,
+    owner,
+    repo,
+    baseTreeSha,
+    fileBlobs,
+    deletes
+  )
 
   // 4. Create commit
   const commitSha = await createCommit(token, owner, repo, message, newTreeSha, headSha)

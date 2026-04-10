@@ -12,7 +12,7 @@ interface UseDraftRevertOptions {
 interface DraftPayload {
   path:        string
   content:     string
-  originalSha: string
+  originalSha: string | null
   uploadedBy:  string
   uploadedAt:  string
 }

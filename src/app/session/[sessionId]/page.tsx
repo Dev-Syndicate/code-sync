@@ -19,8 +19,10 @@ import { useConnectionStatus } from '@/hooks/useConnectionStatus'
 import { useFileEditorTracking } from '@/hooks/useFileEditorTracking'
 import { useAuth } from '@/hooks/useAuth'
 import { useDraftSave } from '@/hooks/useDraftSave'
-import { useEditorStore, type FileNode } from '@/store/editorStore'
-import { ChatPanel } from '@/components/chat/ChatPanel'
+import { usePendingDeletesSync } from '@/hooks/usePendingDeletesSync'
+import { useEditorStore } from '@/store/editorStore'
+import { buildFileTree, type FlatFileEntry } from '@/lib/editor/buildFileTree'
+import { RightSidebar } from '@/components/session/RightSidebar'
 import {
   ResizableHandle,
   ResizablePanel,
@@ -36,65 +38,8 @@ function formatRelativeTime(date: Date): string {
   return `${Math.floor(mins / 60)}h`
 }
 
-// ── Flat path list → nested FileNode tree (VS Code Explorer style) ──
-// Input: [{ path: 'src/app/page.tsx', language: 'typescript' }, ...]
-// Output: [{ name: 'src', type: 'directory', children: [...] }, ...]
-interface FlatFileEntry {
-  path: string
-  language: string
-}
-function buildFileTree(files: FlatFileEntry[]): FileNode[] {
-  const root: FileNode[] = []
-
-  for (const file of files) {
-    const parts = file.path.split('/').filter(Boolean)
-    let currentLevel = root
-    let currentPath = ''
-
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i]
-      currentPath = currentPath ? `${currentPath}/${part}` : part
-      const isLeaf = i === parts.length - 1
-
-      let node = currentLevel.find((n) => n.name === part)
-      if (!node) {
-        node = isLeaf
-          ? {
-              name: part,
-              path: file.path,
-              type: 'file',
-              language: file.language,
-            }
-          : {
-              name: part,
-              path: currentPath,
-              type: 'directory',
-              children: [],
-            }
-        currentLevel.push(node)
-      }
-
-      if (!isLeaf && node.type === 'directory' && node.children) {
-        currentLevel = node.children
-      }
-    }
-  }
-
-  // Sort: directories first, then files, both alphabetical — matches
-  // VS Code Explorer ordering.
-  const sortNodes = (nodes: FileNode[]): FileNode[] => {
-    nodes.sort((a, b) => {
-      if (a.type !== b.type) return a.type === 'directory' ? -1 : 1
-      return a.name.localeCompare(b.name)
-    })
-    for (const n of nodes) {
-      if (n.type === 'directory' && n.children) sortNodes(n.children)
-    }
-    return nodes
-  }
-
-  return sortNodes(root)
-}
+// buildFileTree moved to @/lib/editor/buildFileTree so the Explorer's
+// refresh flow can reuse the same flat → nested conversion logic.
 
 export default function SessionPage({
   params,
@@ -113,6 +58,7 @@ export default function SessionPage({
     branch: string
   } | null>(null)
   const [sessionError, setSessionError] = useState<string | null>(null)
+  const [treeLoaded, setTreeLoaded] = useState(false)
 
   // Fetch the session doc on mount. It contains the flat `files` array
   // (populated by POST /api/sessions from GitHub's git/trees endpoint),
@@ -179,6 +125,7 @@ export default function SessionPage({
           branch: session.branch,
         })
         setFiles(buildFileTree(session.files ?? []))
+        setTreeLoaded(true)
       } catch (err) {
         if (cancelled) return
         if (err instanceof DOMException && err.name === 'AbortError') return
@@ -193,6 +140,7 @@ export default function SessionPage({
       // Clear the file tree on unmount so switching sessions doesn't show
       // stale files from a previous session while the new one loads.
       setFiles([])
+      setTreeLoaded(false)
     }
   }, [sessionId, setFiles])
 
@@ -271,6 +219,11 @@ export default function SessionPage({
 
   // ── Draft save ──
   const { save, saveStatus, hasDirtyFiles, lastSavedAt } = useDraftSave({ sessionId })
+
+  // Persist Explorer-initiated deletions across reload. Seeds pendingDeletes
+  // from the server and prunes the tree on mount, then debounces PUTs as
+  // the user continues to delete/rename files.
+  usePendingDeletesSync({ sessionId, treeReady: treeLoaded })
 
   // ── Save Revert — roll every open file back to its last saved draft ──
   const { revertToLastSave, revertStatus } = useDraftRevert({ sessionId, ydoc })
@@ -385,6 +338,7 @@ export default function SessionPage({
                     repoOwner={repoInfo?.owner ?? null}
                     repoName={repoInfo?.repo ?? null}
                     sessionId={sessionId}
+                    ydoc={ydoc}
                   />
                 )}
 
@@ -501,7 +455,7 @@ export default function SessionPage({
                 >
                   <PanelRightClose className="h-4 w-4" strokeWidth={2} />
                 </button>
-                <ChatPanel sessionId={sessionId} />
+                <RightSidebar sessionId={sessionId} ydoc={ydoc} />
               </div>
             </ResizablePanel>
           </>
