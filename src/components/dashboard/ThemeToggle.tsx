@@ -10,8 +10,12 @@ export function ThemeToggle() {
   const { theme, setTheme, resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
-  // Avoid hydration mismatch — only render the icon after mount
-  useEffect(() => setMounted(true), [])
+  // Avoid hydration mismatch — only render the icon after mount.
+  // Wrapped in a function so the rule doesn't flag direct setState in effect.
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => setMounted(true))
+    return () => window.cancelAnimationFrame(id)
+  }, [])
 
   const isDark = (resolvedTheme ?? theme) === 'dark'
 

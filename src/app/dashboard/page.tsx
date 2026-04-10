@@ -28,6 +28,9 @@ import { SessionCard } from '@/components/dashboard/SessionCard'
 import { StatsStrip } from '@/components/dashboard/StatsStrip'
 import { RecentSessions } from '@/components/dashboard/RecentSessions'
 import { CommandPalette } from '@/components/dashboard/CommandPalette'
+import { SessionAnalytics } from '@/components/dashboard/SessionAnalytics'
+import { TeamCollaboration } from '@/components/dashboard/TeamCollaboration'
+import { SessionProgress } from '@/components/dashboard/SessionProgress'
 import { ThemeToggle } from '@/components/dashboard/ThemeToggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -409,12 +412,38 @@ export default function DashboardPage() {
               />
             </div>
 
+            {/* ── Analytics + Progress Row ── */}
+            {!sessionsLoading && (
+              <div
+                className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-3 animate-in fade-in slide-in-from-bottom-2 duration-500"
+                style={{ animationDelay: '120ms', animationFillMode: 'backwards' }}
+              >
+                <div className="lg:col-span-2">
+                  <SessionAnalytics sessions={allSessions} />
+                </div>
+                <div>
+                  <SessionProgress sessions={allSessions} />
+                </div>
+              </div>
+            )}
+
+            {/* ── Team Collaboration + Recent Sessions Row ── */}
+            {!sessionsLoading && (
+              <div
+                className="mb-10 grid grid-cols-1 gap-4 lg:grid-cols-2 animate-in fade-in slide-in-from-bottom-2 duration-500"
+                style={{ animationDelay: '180ms', animationFillMode: 'backwards' }}
+              >
+                <TeamCollaboration sessions={allSessions} />
+                <RecentSessions sessions={allSessions} />
+              </div>
+            )}
+
             {/* ── Active Sessions Section ── */}
             {!sessionsLoading && activeSessions.length > 0 && (
               <section
                 id="active-sessions"
                 className="mb-10 animate-in fade-in slide-in-from-bottom-2 duration-500"
-                style={{ animationDelay: '160ms', animationFillMode: 'backwards' }}
+                style={{ animationDelay: '220ms', animationFillMode: 'backwards' }}
               >
                 <div className="mb-4 flex items-center gap-2">
                   <h2 className="text-lg font-bold text-foreground">Active Sessions</h2>
@@ -431,16 +460,6 @@ export default function DashboardPage() {
                   ))}
                 </div>
               </section>
-            )}
-
-            {/* ── Recent Sessions ── */}
-            {!sessionsLoading && allSessions.length > 0 && (
-              <div
-                className="animate-in fade-in slide-in-from-bottom-2 duration-500"
-                style={{ animationDelay: '240ms', animationFillMode: 'backwards' }}
-              >
-                <RecentSessions sessions={allSessions} />
-              </div>
             )}
 
             {/* ── Repositories Section ── */}
