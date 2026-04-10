@@ -7,6 +7,11 @@ function initAdmin(): admin.app.App {
     return admin.apps[0]!
   }
 
+  if (!process.env.FIREBASE_ADMIN_PROJECT_ID) {
+    // Avoid crashing the Next.js build if env vars aren't loaded yet
+    return admin.initializeApp({ projectId: 'demo-project' })
+  }
+
   const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n')
 
   return admin.initializeApp({

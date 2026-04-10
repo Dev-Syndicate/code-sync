@@ -20,9 +20,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const user = await getUser(firebaseUser.uid)
           if (user) {
             setUser(user)
-            // Ensure session cookie is set
-            const expires = new Date(Date.now() + 7 * 864e5).toUTCString()
-            document.cookie = `session=${encodeURIComponent(firebaseUser.uid)}; expires=${expires}; path=/; SameSite=Lax`
           } else {
             // User exists in Firebase Auth but not in Firestore
             // This can happen on first login before the user doc is created
@@ -35,8 +32,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         clearUser()
-        // Clear session cookie
-        document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax'
       }
     })
 
