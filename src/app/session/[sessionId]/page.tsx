@@ -333,12 +333,16 @@ export default function SessionPage({
   )
 
   return (
-    <div className="h-screen flex flex-col bg-[#1e1e1e] text-white overflow-hidden">
+    <div className="h-screen flex flex-col bg-background text-foreground overflow-hidden">
       {/* ── Top bar ── */}
       <SessionHeader
         sessionId={sessionId}
         connectionStatus={connectionStatus}
         participantCount={remoteUsers.length + 1}
+        repoName={
+          repoInfo ? `${repoInfo.owner}/${repoInfo.repo}` : undefined
+        }
+        branch={repoInfo?.branch}
         onSave={save}
         saveStatus={saveStatus}
         hasDirtyFiles={hasDirtyFiles}
@@ -356,11 +360,11 @@ export default function SessionPage({
         <ResizablePanel
           defaultSize={18}
           minSize={10}
-          className="overflow-hidden border-r border-white/10 bg-[#252526]"
+          className="overflow-hidden border-r border-border bg-card"
         >
           <div className="flex h-full min-w-0 flex-col overflow-hidden">
             {sessionError ? (
-              <div className="p-4 text-xs text-red-400">{sessionError}</div>
+              <div className="p-4 text-xs text-destructive">{sessionError}</div>
             ) : (
               <FileTree
                 className="flex-1 min-w-0"
@@ -371,7 +375,7 @@ export default function SessionPage({
             )}
 
             {/* ── Participant list ── */}
-            <div className="min-w-0 border-t border-white/10">
+            <div className="min-w-0 border-t border-border">
               <ParticipantList
                 remoteUsers={remoteUsers}
                 currentUser={currentUser}
@@ -410,17 +414,17 @@ export default function SessionPage({
             </div>
 
             {/* ── Status bar ── */}
-            <div className="flex items-center justify-between px-3 h-6 text-[11px] bg-[#007acc] text-white shrink-0">
+            <div className="flex items-center justify-between px-3 h-6 text-[11px] bg-card border-t border-border text-muted-foreground shrink-0">
               <div className="flex items-center gap-3">
                 {/* Connection status */}
                 <span className="flex items-center gap-1.5">
                   <span
                     className={`w-2 h-2 rounded-full ${
                       connectionStatus === 'connected'
-                        ? 'bg-green-400'
+                        ? 'bg-emerald-500'
                         : connectionStatus === 'connecting'
-                          ? 'bg-yellow-400 animate-pulse'
-                          : 'bg-red-400'
+                          ? 'bg-yellow-500 animate-pulse'
+                          : 'bg-red-500'
                     }`}
                   />
                   {connectionStatus === 'connected'
@@ -432,7 +436,7 @@ export default function SessionPage({
 
                 {/* Collab status */}
                 {isReady && (
-                  <span className="opacity-70">
+                  <span>
                     {remoteUsers.length > 0
                       ? `${remoteUsers.length + 1} collaborators`
                       : 'Solo editing'}
@@ -440,22 +444,20 @@ export default function SessionPage({
                 )}
 
                 {/* Save status */}
-                {saveStatus === 'saving' && <span className="opacity-70">Saving...</span>}
-                {saveStatus === 'error' && <span className="text-red-300">Save failed</span>}
-                {saveStatus === 'saved' && lastSavedAt && <span className="opacity-70">Saved just now</span>}
+                {saveStatus === 'saving' && <span>Saving...</span>}
+                {saveStatus === 'error' && <span className="text-destructive">Save failed</span>}
+                {saveStatus === 'saved' && lastSavedAt && <span>Saved just now</span>}
                 {saveStatus === 'idle' && lastSavedAt && (
-                  <span className="opacity-70">Saved {formatRelativeTime(lastSavedAt)} ago</span>
+                  <span>Saved {formatRelativeTime(lastSavedAt)} ago</span>
                 )}
               </div>
 
               <div className="flex items-center gap-3">
                 {activeTab && (
                   <>
-                    <span className="opacity-70">{activeTab.language}</span>
-                    <span className="opacity-70">
-                      Tab Size: {settings.tabSize}
-                    </span>
-                    <span className="opacity-70">UTF-8</span>
+                    <span>{activeTab.language}</span>
+                    <span>Tab Size: {settings.tabSize}</span>
+                    <span>UTF-8</span>
                   </>
                 )}
               </div>

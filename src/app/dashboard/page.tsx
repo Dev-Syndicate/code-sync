@@ -85,6 +85,14 @@ export default function DashboardPage() {
   const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [sessionsLoading, setSessionsLoading] = useState(true)
+
+  // Sign the user out and hard-navigate to /login using replace() so the
+  // authenticated dashboard is removed from history — pressing Back on the
+  // login page must not restore the signed-in state.
+  const handleLogout = async () => {
+    await logout()
+    window.location.replace('/login')
+  }
   const [allSessions, setAllSessions] = useState<Session[]>([])
 
   // Fetch active sessions from the real API
@@ -165,7 +173,7 @@ export default function DashboardPage() {
                   viewMode={viewMode}
                   onStartSession={handleStartSession}
                   onToggleViewMode={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-                  onLogout={() => logout()}
+                  onLogout={handleLogout}
                   userLogin={user?.username}
                 />
               </div>
@@ -180,7 +188,7 @@ export default function DashboardPage() {
                     viewMode={viewMode}
                     onStartSession={handleStartSession}
                     onToggleViewMode={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-                    onLogout={() => logout()}
+                    onLogout={handleLogout}
                     userLogin={user?.username}
                   />
                 </div>
@@ -255,7 +263,7 @@ export default function DashboardPage() {
                       </>
                     )}
                     <DropdownMenuItem
-                      onClick={() => logout()}
+                      onClick={handleLogout}
                       className="cursor-pointer text-destructive focus:text-destructive"
                     >
                       <LogOut className="mr-2 h-4 w-4" />

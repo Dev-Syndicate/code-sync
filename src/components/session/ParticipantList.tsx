@@ -31,7 +31,7 @@ export function ParticipantList({
 
   return (
     <div className="p-2">
-      <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/30">
+      <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         Participants ({allUsers.length})
       </div>
 
@@ -39,7 +39,7 @@ export function ParticipantList({
         {allUsers.map((user) => (
           <div
             key={user.userId}
-            className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/5 transition-colors"
+            className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent transition-colors"
           >
             {/* Avatar */}
             <div className="relative shrink-0">
@@ -62,15 +62,15 @@ export function ParticipantList({
 
               {/* Online dot */}
               <span
-                className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-[#252526] bg-green-500"
+                className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-card bg-emerald-500"
               />
             </div>
 
             {/* Name */}
-            <span className="text-xs text-white/80 truncate">
+            <span className="text-xs text-foreground/85 truncate">
               {user.username}
               {user.isLocal && (
-                <span className="text-white/30 ml-1">(you)</span>
+                <span className="text-muted-foreground ml-1">(you)</span>
               )}
             </span>
 

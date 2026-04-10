@@ -15,11 +15,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm',
+    'bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 shadow-sm',
   secondary:
     'bg-[var(--foreground)]/10 text-[var(--foreground)] hover:bg-[var(--foreground)]/15 active:bg-[var(--foreground)]/20',
   danger:
-    'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-sm',
+    'bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/80 shadow-sm',
   ghost:
     'bg-transparent text-[var(--foreground)]/70 hover:bg-[var(--foreground)]/10 hover:text-[var(--foreground)]',
 }

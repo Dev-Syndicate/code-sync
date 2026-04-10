@@ -43,6 +43,11 @@ export default function ProfilePage() {
   const [allSessions, setAllSessions] = useState<Session[]>([])
   const [mounted, setMounted] = useState(false)
 
+  const handleLogout = async () => {
+    await logout()
+    window.location.replace('/login')
+  }
+
   useEffect(() => {
     const id = window.requestAnimationFrame(() => setMounted(true))
     return () => window.cancelAnimationFrame(id)
@@ -189,7 +194,7 @@ export default function ProfilePage() {
                       </>
                     )}
                     <DropdownMenuItem
-                      onClick={() => logout()}
+                      onClick={handleLogout}
                       className="cursor-pointer text-destructive focus:text-destructive"
                     >
                       Sign out
@@ -395,7 +400,7 @@ export default function ProfilePage() {
                     </div>
                     <Button
                       variant="outline"
-                      onClick={() => logout()}
+                      onClick={handleLogout}
                       className="rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive"
                     >
                       Sign out
