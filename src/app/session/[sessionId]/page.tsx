@@ -23,6 +23,10 @@ import { usePendingDeletesSync } from '@/hooks/usePendingDeletesSync'
 import { useEditorStore } from '@/store/editorStore'
 import { buildFileTree, type FlatFileEntry } from '@/lib/editor/buildFileTree'
 import { RightSidebar } from '@/components/session/RightSidebar'
+import { doc, onSnapshot } from 'firebase/firestore'
+import { db } from '@/lib/firebase/config'
+import { useToastStore } from '@/store/toastStore'
+import { useRouter } from 'next/navigation'
 import {
   ResizableHandle,
   ResizablePanel,
@@ -49,6 +53,9 @@ export default function SessionPage({
   const { sessionId } = use(params)
   const { user } = useAuth()
   const setFiles = useEditorStore((s) => s.setFiles)
+  const router = useRouter()
+  const addToast = useToastStore((s) => s.addToast)
+  const [ownerUid, setOwnerUid] = useState<string | null>(null)
 
   // ── Session metadata (repo/owner/branch) — needed so FileTree can
   //    load file contents from the correct GitHub repo on click.
@@ -143,6 +150,31 @@ export default function SessionPage({
       setTreeLoaded(false)
     }
   }, [sessionId, setFiles])
+
+  // Live subscription to the session doc for (a) computing isHost once the
+  // owner field lands, and (b) reacting when the host ends the session —
+  // we flip everyone (host included) back to /dashboard so there's a
+  // single exit path.
+  useEffect(() => {
+    if (!sessionId) return
+    const ref = doc(db, 'sessions', sessionId)
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        if (!snap.exists()) return
+        const data = snap.data() as { owner?: string; active?: boolean }
+        if (data.owner) setOwnerUid(data.owner)
+        if (data.active === false) {
+          addToast('info', 'This session has been ended by the host.')
+          router.replace('/dashboard')
+        }
+      },
+      (err) => {
+        console.error('[SessionPage] session listener failed:', err)
+      },
+    )
+    return () => unsub()
+  }, [sessionId, router, addToast])
 
   // ── Mock user for development (until Dev 1 delivers useAuth) ──
   const currentUser = useMemo(
@@ -315,6 +347,7 @@ export default function SessionPage({
           onRevertSave={revertToLastSave}
           revertStatus={revertStatus}
           onCommitReverted={handleCommitReverted}
+          isHost={!!ownerUid && ownerUid === user?.uid}
         />
 
       <ResizablePanelGroup

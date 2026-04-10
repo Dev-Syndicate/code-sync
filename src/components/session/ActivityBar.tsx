@@ -6,6 +6,7 @@ import {
   Files,
   GitBranch,
   History,
+  PowerOff,
   Save,
   Share2,
   Undo2,
@@ -31,6 +32,8 @@ interface ActivityBarProps {
   onRevertSave?: () => void
   revertStatus?: 'idle' | 'loading' | 'success' | 'error'
   onCommitReverted?: (affectedFiles: RevertedFile[]) => void
+  /** True when the current user owns the session. Unlocks "End session". */
+  isHost?: boolean
 }
 
 interface ActivityItemProps {
@@ -39,6 +42,7 @@ interface ActivityItemProps {
   disabled?: boolean
   active?: boolean
   primary?: boolean
+  danger?: boolean
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>
 }
 
@@ -48,6 +52,7 @@ function ActivityItem({
   disabled,
   active,
   primary,
+  danger,
   icon: Icon,
 }: ActivityItemProps) {
   return (
@@ -61,8 +66,9 @@ function ActivityItem({
           'relative flex h-11 w-11 items-center justify-center transition-colors',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
           disabled && 'opacity-40 cursor-not-allowed',
-          !disabled && !primary && 'text-muted-foreground hover:text-foreground',
+          !disabled && !primary && !danger && 'text-muted-foreground hover:text-foreground',
           !disabled && primary && 'text-primary hover:text-primary/80',
+          !disabled && danger && 'text-destructive hover:text-destructive/80',
           active && 'text-foreground',
         )}
       >
@@ -101,10 +107,12 @@ export function ActivityBar({
   onRevertSave,
   revertStatus = 'idle',
   onCommitReverted,
+  isHost = false,
 }: ActivityBarProps) {
   const [showShareModal, setShowShareModal] = useState(false)
   const [showCommitModal, setShowCommitModal] = useState(false)
   const [showHistoryModal, setShowHistoryModal] = useState(false)
+  const [endingSession, setEndingSession] = useState(false)
 
   const handleRevertSaveClick = () => {
     if (!onRevertSave) return
@@ -117,6 +125,33 @@ export function ActivityBar({
   const handleLeave = () => {
     if (confirm('Are you sure you want to leave this session?')) {
       window.location.href = '/dashboard'
+    }
+  }
+
+  const handleEndSession = async () => {
+    const ok = confirm(
+      'End this session for everyone?\n\nAll participants will be disconnected. The saved draft is kept and you can still commit & push from the dashboard later.',
+    )
+    if (!ok) return
+    setEndingSession(true)
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/end`, {
+        method: 'POST',
+        credentials: 'same-origin',
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        alert(body?.error?.message ?? `Failed to end session (${res.status})`)
+        setEndingSession(false)
+        return
+      }
+      // Don't redirect here — the Firestore listener in SessionPage will
+      // pick up active:false and route everyone (host included) to
+      // /dashboard so there's a single exit path.
+    } catch (err) {
+      console.error('[ActivityBar] end session failed:', err)
+      alert('Failed to end session.')
+      setEndingSession(false)
     }
   }
 
@@ -177,8 +212,17 @@ export function ActivityBar({
           />
         </div>
 
-        {/* Bottom group: leave */}
+        {/* Bottom group: leave / end */}
         <div className="mt-auto flex flex-col items-center">
+          {isHost && (
+            <ActivityItem
+              icon={PowerOff}
+              label={endingSession ? 'Ending session...' : 'End session for everyone'}
+              danger
+              disabled={endingSession}
+              onClick={handleEndSession}
+            />
+          )}
           <ActivityItem
             icon={DoorOpen}
             label="Leave session"
