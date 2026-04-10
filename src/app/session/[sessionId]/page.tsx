@@ -2,10 +2,12 @@
 
 import { use, useState, useCallback, useEffect, useMemo } from 'react'
 import type { editor } from 'monaco-editor'
+import { MessageSquare, PanelRightClose } from 'lucide-react'
 import { CodeEditor } from '@/components/editor/CodeEditor'
 import { FileTree } from '@/components/editor/FileTree'
 import { EditorTabs } from '@/components/editor/EditorTabs'
 import { SessionHeader } from '@/components/session/SessionHeader'
+import { ActivityBar } from '@/components/session/ActivityBar'
 import { ParticipantList } from '@/components/session/ParticipantList'
 import { useEditor } from '@/hooks/useEditor'
 import { useCollaboration } from '@/hooks/useCollaboration'
@@ -206,6 +208,10 @@ export default function SessionPage({
     [user]
   )
 
+  // ── Panel visibility state ──
+  const [filesOpen, setFilesOpen] = useState(true)
+  const [chatCollapsed, setChatCollapsed] = useState(false)
+
   // ── Editor state ──
   const {
     activeFile,
@@ -336,55 +342,65 @@ export default function SessionPage({
     <div className="h-screen flex flex-col bg-background text-foreground overflow-hidden">
       {/* ── Top bar ── */}
       <SessionHeader
-        sessionId={sessionId}
         connectionStatus={connectionStatus}
-        participantCount={remoteUsers.length + 1}
         repoName={
           repoInfo ? `${repoInfo.owner}/${repoInfo.repo}` : undefined
         }
         branch={repoInfo?.branch}
-        onSave={save}
-        saveStatus={saveStatus}
-        hasDirtyFiles={hasDirtyFiles}
-        onRevertSave={revertToLastSave}
-        revertStatus={revertStatus}
-        onCommitReverted={handleCommitReverted}
       />
 
-      {/* ── Main content area — 3 resizable panels ── */}
+      {/* ── Body: ActivityBar (fixed) + resizable panels ── */}
+      <div className="flex flex-1 overflow-hidden">
+        <ActivityBar
+          sessionId={sessionId}
+          participantCount={remoteUsers.length + 1}
+          filesOpen={filesOpen}
+          onToggleFiles={() => setFilesOpen((v) => !v)}
+          onSave={save}
+          saveStatus={saveStatus}
+          hasDirtyFiles={hasDirtyFiles}
+          onRevertSave={revertToLastSave}
+          revertStatus={revertStatus}
+          onCommitReverted={handleCommitReverted}
+        />
+
       <ResizablePanelGroup
         orientation="horizontal"
         className="flex-1 overflow-hidden"
       >
-        {/* ── Left: File tree ── */}
-        <ResizablePanel
-          defaultSize={18}
-          minSize={10}
-          className="overflow-hidden border-r border-border bg-card"
-        >
-          <div className="flex h-full min-w-0 flex-col overflow-hidden">
-            {sessionError ? (
-              <div className="p-4 text-xs text-destructive">{sessionError}</div>
-            ) : (
-              <FileTree
-                className="flex-1 min-w-0"
-                repoOwner={repoInfo?.owner ?? null}
-                repoName={repoInfo?.repo ?? null}
-                sessionId={sessionId}
-              />
-            )}
+        {/* ── Left: File tree (toggleable from ActivityBar) ── */}
+        {filesOpen && (
+          <>
+            <ResizablePanel
+              defaultSize={18}
+              minSize={10}
+              className="overflow-hidden border-r border-border bg-card"
+            >
+              <div className="flex h-full min-w-0 flex-col overflow-hidden">
+                {sessionError ? (
+                  <div className="p-4 text-xs text-destructive">{sessionError}</div>
+                ) : (
+                  <FileTree
+                    className="flex-1 min-w-0"
+                    repoOwner={repoInfo?.owner ?? null}
+                    repoName={repoInfo?.repo ?? null}
+                    sessionId={sessionId}
+                  />
+                )}
 
-            {/* ── Participant list ── */}
-            <div className="min-w-0 border-t border-border">
-              <ParticipantList
-                remoteUsers={remoteUsers}
-                currentUser={currentUser}
-              />
-            </div>
-          </div>
-        </ResizablePanel>
+                {/* ── Participant list ── */}
+                <div className="min-w-0 border-t border-border">
+                  <ParticipantList
+                    remoteUsers={remoteUsers}
+                    currentUser={currentUser}
+                  />
+                </div>
+              </div>
+            </ResizablePanel>
 
-        <ResizableHandle withHandle />
+            <ResizableHandle withHandle />
+          </>
+        )}
 
         {/* ── Center: Editor ── */}
         <ResizablePanel defaultSize={58} minSize={20} className="overflow-hidden">
@@ -465,15 +481,55 @@ export default function SessionPage({
           </div>
         </ResizablePanel>
 
-        <ResizableHandle withHandle />
-
-        {/* ── Right: Chat ── */}
-        <ResizablePanel defaultSize={24} minSize={12} className="overflow-hidden">
-          <div className="h-full min-w-0 overflow-hidden">
-            <RightSidebar sessionId={sessionId} ydoc={ydoc} />
-          </div>
-        </ResizablePanel>
+        {/* ── Right: Chat (resizable when open) ── */}
+        {!chatCollapsed && (
+          <>
+            <ResizableHandle withHandle />
+            <ResizablePanel
+              defaultSize={24}
+              minSize={12}
+              className="overflow-hidden"
+            >
+              <div className="relative h-full min-w-0 overflow-hidden">
+                {/* Collapse button — absolute top-right over the chat header */}
+                <button
+                  type="button"
+                  onClick={() => setChatCollapsed(true)}
+                  aria-label="Collapse chat"
+                  title="Collapse chat"
+                  className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <PanelRightClose className="h-4 w-4" strokeWidth={2} />
+                </button>
+                <RightSidebar sessionId={sessionId} ydoc={ydoc} />
+              </div>
+            </ResizablePanel>
+          </>
+        )}
       </ResizablePanelGroup>
+
+      {/* Collapsed chat rail — shown when chatCollapsed is true */}
+      {chatCollapsed && (
+        <button
+          type="button"
+          onClick={() => setChatCollapsed(false)}
+          aria-label="Expand chat"
+          title="Expand chat"
+          className="group flex w-10 shrink-0 flex-col items-center justify-start gap-3 border-l border-border bg-card py-4 transition-colors hover:bg-accent"
+        >
+          <MessageSquare
+            className="h-[18px] w-[18px] text-muted-foreground group-hover:text-foreground"
+            strokeWidth={1.75}
+          />
+          <span
+            className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground group-hover:text-foreground"
+            style={{ writingMode: 'vertical-rl' }}
+          >
+            Chat
+          </span>
+        </button>
+      )}
+      </div>
     </div>
   )
 }
