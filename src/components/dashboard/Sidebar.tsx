@@ -32,6 +32,14 @@ export function Sidebar() {
     return pathname === href || pathname.startsWith(`${href}/`)
   }
 
+  const handleLogout = async () => {
+    await logout()
+    // replace() — not href/push — so the previous (authenticated) page is
+    // removed from history. Pressing Back on the login page must NOT restore
+    // the dashboard, which would momentarily show stale user data.
+    window.location.replace('/login')
+  }
+
   return (
     <aside className="fixed left-0 top-0 hidden h-screen w-[240px] flex-col border-r border-border/60 bg-sidebar p-5 lg:flex">
       {/* Logo */}
@@ -102,7 +110,7 @@ export function Sidebar() {
         })}
         <button
           type="button"
-          onClick={() => logout()}
+          onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
         >
           <LogOut className="h-[18px] w-[18px]" strokeWidth={2} />

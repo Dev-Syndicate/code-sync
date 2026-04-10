@@ -17,11 +17,6 @@ function formatTime(ts: ChatMessageType['timestamp']): string {
 export function ChatMessage({ message, isOwnMessage }: Props) {
   // ── System event messages ──────────────────────────────────────────────────
   if (message.type === 'system') {
-    const icon =
-      message.systemEvent === 'join'   ? '🟢' :
-      message.systemEvent === 'leave'  ? '🔴' :
-      message.systemEvent === 'commit' ? '✅' : 'ℹ️'
-
     return (
       <div className="flex items-center justify-center py-1">
         <span
@@ -31,7 +26,7 @@ export function ChatMessage({ message, isOwnMessage }: Props) {
             fontStyle:  'italic',
           }}
         >
-          {icon} {message.message}
+          {message.message}
         </span>
       </div>
     )
@@ -44,15 +39,6 @@ export function ChatMessage({ message, isOwnMessage }: Props) {
         isOwnMessage ? 'flex-row-reverse' : 'flex-row'
       }`}
     >
-      {/* Avatar */}
-      <img
-        src={message.avatar}
-        alt={message.username}
-        width={28}
-        height={28}
-        style={{ borderRadius: 'var(--radius-full)', flexShrink: 0, marginTop: 2 }}
-      />
-
       {/* Bubble */}
       <div
         style={{

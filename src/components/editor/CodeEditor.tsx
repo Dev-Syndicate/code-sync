@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { useTheme } from 'next-themes'
 import { Loader } from '@/components/ui/Loader'
 import type { EditorSettings } from '@/types/editor'
 import type { editor } from 'monaco-editor'
@@ -11,7 +12,7 @@ const MonacoEditor = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex items-center justify-center h-full bg-[#1e1e1e]">
+      <div className="flex items-center justify-center h-full bg-background">
         <Loader text="Loading editor..." size="lg" />
       </div>
     ),
@@ -39,6 +40,12 @@ export function CodeEditor({
   readOnly = false,
   settings,
 }: CodeEditorProps) {
+  const { resolvedTheme } = useTheme()
+  // Follow the app theme — dark → vs-dark, light → vs.
+  // If the user explicitly set a theme in settings, that still wins.
+  const monacoTheme =
+    settings?.theme ?? (resolvedTheme === 'light' ? 'vs' : 'vs-dark')
+
   return (
     <MonacoEditor
       height="100%"
@@ -46,7 +53,7 @@ export function CodeEditor({
       language={language}
       defaultValue={value ?? ''}
       onChange={onChange}
-      theme={settings?.theme ?? 'vs-dark'}
+      theme={monacoTheme}
       onMount={(editorInstance) => {
         // Focus the editor when it mounts
         editorInstance.focus()

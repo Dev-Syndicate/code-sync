@@ -61,29 +61,26 @@ export function SessionHeader({
 
   return (
     <>
-      <header className="flex items-center justify-between px-4 h-12 bg-[#333333] border-b border-white/10 shrink-0">
+      <header className="flex items-center justify-between px-4 h-12 bg-card border-b border-border shrink-0">
         {/* Left — Repo info */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">📦</span>
-            <h1 className="text-sm font-semibold text-white truncate max-w-48">
-              {repoName}
-            </h1>
-          </div>
+          <h1 className="text-sm font-semibold text-foreground truncate max-w-48">
+            {repoName}
+          </h1>
 
-          <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/60">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
             {branch}
           </span>
 
           {/* Connection dot */}
-          <span className="flex items-center gap-1.5 text-xs text-white/50">
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span className={`w-2 h-2 rounded-full ${statusCfg.color}`} />
             {statusCfg.label}
           </span>
 
           {/* Participant count */}
-          <span className="flex items-center gap-1 text-xs text-white/40">
-            👥 {participantCount}
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            {participantCount} {participantCount === 1 ? 'user' : 'users'}
           </span>
         </div>
 
@@ -94,7 +91,7 @@ export function SessionHeader({
             size="sm"
             onClick={() => setShowShareModal(true)}
           >
-            🔗 Share
+            Share
           </Button>
 
           <Button
@@ -103,7 +100,7 @@ export function SessionHeader({
             onClick={onSave}
             disabled={!hasDirtyFiles || saveStatus === 'saving'}
           >
-            {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : '💾 Save'}
+            {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : 'Save'}
           </Button>
 
           <Button
@@ -113,7 +110,7 @@ export function SessionHeader({
             disabled={!onRevertSave || revertStatus === 'loading'}
             title="Revert every open file to its last saved draft (shared with all peers)"
           >
-            {revertStatus === 'loading' ? 'Reverting...' : '↺ Revert Save'}
+            {revertStatus === 'loading' ? 'Reverting...' : 'Revert Save'}
           </Button>
 
           <Button
@@ -122,7 +119,7 @@ export function SessionHeader({
             onClick={() => setShowHistoryModal(true)}
             title="Show commit history and revert past commits"
           >
-            🕐 History
+            History
           </Button>
 
           <Button
@@ -130,7 +127,7 @@ export function SessionHeader({
             size="sm"
             onClick={() => setShowCommitModal(true)}
           >
-            💾 Commit & Push
+            Commit &amp; Push
           </Button>
 
           <Button
@@ -143,7 +140,7 @@ export function SessionHeader({
               }
             }}
           >
-            🚪 Leave
+            Leave
           </Button>
         </div>
       </header>

@@ -90,8 +90,8 @@ export function ChatInput({ onSend, disabled = false }: Props) {
         type="submit"
         disabled={isDisabled}
         style={{
-          width:        '36px',
           height:       '36px',
+          padding:      '0 14px',
           flexShrink:   0,
           display:      'flex',
           alignItems:   'center',
@@ -102,18 +102,12 @@ export function ChatInput({ onSend, disabled = false }: Props) {
           borderRadius: 'var(--radius-md)',
           cursor:       isDisabled ? 'not-allowed' : 'pointer',
           transition:   'background var(--transition-fast)',
-          fontSize:     '16px',
+          fontSize:     'var(--text-sm)',
+          fontWeight:   600,
         }}
         title="Send message"
       >
-        {sending ? (
-          // Minimal spinner
-          <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>
-            ↻
-          </span>
-        ) : (
-          '↑'
-        )}
+        {sending ? 'Sending' : 'Send'}
       </button>
     </form>
   )

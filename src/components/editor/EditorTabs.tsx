@@ -85,19 +85,13 @@ export function EditorTabs({ className = '' }: EditorTabsProps) {
                 closeFile(tab.path)
               }}
               className="
-                p-0.5 rounded opacity-0 group-hover:opacity-100
+                h-4 w-4 flex items-center justify-center leading-none text-sm
+                rounded opacity-0 group-hover:opacity-100
                 hover:bg-[var(--foreground)]/15 transition-opacity cursor-pointer
               "
               aria-label={`Close ${fileName}`}
             >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path
-                  d="M9 3L3 9M3 3l6 6"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
+              ×
             </button>
           </div>
         )

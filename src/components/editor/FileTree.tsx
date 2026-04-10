@@ -1,33 +1,84 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import {
+  ChevronDown,
+  ChevronRight,
+  File,
+  FileCode,
+  FileCode2,
+  FileJson,
+  FileText,
+  FileType,
+  Folder,
+  FolderOpen,
+  Image as ImageIcon,
+  Settings2,
+  Terminal,
+  type LucideIcon,
+} from 'lucide-react'
 import { useEditorStore, type FileNode } from '@/store/editorStore'
 
 // Track per-path loading state so clicking a file shows a subtle spinner
 // instead of looking frozen while we hit /api/repos for its content.
 type LoadingMap = Record<string, boolean>
 
-// ── Language → emoji icon mapping ──
-const FILE_ICONS: Record<string, string> = {
-  typescript: '🟦',
-  javascript: '🟨',
-  typescriptreact: '⚛️',
-  javascriptreact: '⚛️',
-  json: '📋',
-  markdown: '📝',
-  css: '🎨',
-  html: '🌐',
-  python: '🐍',
-  rust: '🦀',
-  go: '🐹',
-  yaml: '⚙️',
-  toml: '⚙️',
-  shell: '💻',
-  dockerfile: '🐳',
+// ── Language → icon + tint color (VS Code-ish palette) ──
+interface IconMeta {
+  Icon: LucideIcon
+  color: string
 }
 
-const FOLDER_ICON_OPEN = '📂'
-const FOLDER_ICON_CLOSED = '📁'
+const LANGUAGE_ICON: Record<string, IconMeta> = {
+  typescript:       { Icon: FileCode,  color: '#3178c6' },
+  typescriptreact:  { Icon: FileCode2, color: '#61dafb' },
+  javascript:       { Icon: FileCode,  color: '#f7df1e' },
+  javascriptreact:  { Icon: FileCode2, color: '#61dafb' },
+  python:           { Icon: FileCode,  color: '#3776ab' },
+  rust:             { Icon: FileCode,  color: '#dea584' },
+  go:               { Icon: FileCode,  color: '#00add8' },
+  java:             { Icon: FileCode,  color: '#b07219' },
+  c:                { Icon: FileCode,  color: '#555555' },
+  cpp:              { Icon: FileCode,  color: '#f34b7d' },
+  csharp:           { Icon: FileCode,  color: '#178600' },
+  php:              { Icon: FileCode,  color: '#4F5D95' },
+  ruby:             { Icon: FileCode,  color: '#701516' },
+  swift:            { Icon: FileCode,  color: '#F05138' },
+  kotlin:           { Icon: FileCode,  color: '#A97BFF' },
+  json:             { Icon: FileJson,  color: '#cbcb41' },
+  yaml:             { Icon: Settings2, color: '#cbcb41' },
+  toml:             { Icon: Settings2, color: '#9c4221' },
+  html:             { Icon: FileType,  color: '#e34c26' },
+  css:              { Icon: FileType,  color: '#563d7c' },
+  scss:             { Icon: FileType,  color: '#c6538c' },
+  markdown:         { Icon: FileText,  color: '#519aba' },
+  shell:            { Icon: Terminal,  color: '#89e051' },
+  dockerfile:       { Icon: Terminal,  color: '#0db7ed' },
+}
+
+const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp'])
+
+function getFileIcon(node: FileNode): IconMeta {
+  const lang = node.language?.toLowerCase() ?? ''
+  if (lang && LANGUAGE_ICON[lang]) return LANGUAGE_ICON[lang]
+
+  // Fallback by extension (useful for image files where language is 'plaintext')
+  const ext = node.name.split('.').pop()?.toLowerCase() ?? ''
+  if (IMAGE_EXTS.has(ext)) return { Icon: ImageIcon, color: '#a074c4' }
+  if (ext === 'md')        return { Icon: FileText,  color: '#519aba' }
+  if (ext === 'json')      return { Icon: FileJson,  color: '#cbcb41' }
+  if (ext === 'sh' || ext === 'bash' || ext === 'zsh') {
+    return { Icon: Terminal, color: '#89e051' }
+  }
+  if (node.name.toLowerCase().startsWith('dockerfile')) {
+    return { Icon: Terminal, color: '#0db7ed' }
+  }
+  if (node.name.startsWith('.') || ext === 'env' || ext === 'gitignore') {
+    return { Icon: Settings2, color: '#6d8086' }
+  }
+
+  return { Icon: File, color: '#8fa1a8' }
+}
 
 interface FileTreeProps {
   className?: string
@@ -202,14 +253,19 @@ function TreeNode({ node, depth, activeFile, loadingMap, onFileClick }: TreeNode
   }, [node, onFileClick])
 
   const isLoading = node.type === 'file' && loadingMap[node.path]
-
   const isActive = node.type === 'file' && node.path === activeFile
-  const icon =
+
+  // Pick icon + color for the leading glyph
+  const { Icon, color } =
     node.type === 'directory'
-      ? isExpanded
-        ? FOLDER_ICON_OPEN
-        : FOLDER_ICON_CLOSED
-      : FILE_ICONS[node.language ?? ''] ?? '📄'
+      ? {
+          Icon: isExpanded ? FolderOpen : Folder,
+          color: '#dcb67a', // warm VS Code folder yellow
+        }
+      : getFileIcon(node)
+
+  // Chevron for directories (rotated on expand)
+  const Chevron = isExpanded ? ChevronDown : ChevronRight
 
   return (
     <div>
@@ -217,27 +273,37 @@ function TreeNode({ node, depth, activeFile, loadingMap, onFileClick }: TreeNode
         onClick={handleClick}
         disabled={isLoading}
         className={`
-          w-full flex items-center gap-1.5 px-2 py-1 rounded-md text-left
+          w-full flex items-center gap-1 px-1.5 py-1 rounded-md text-left
           transition-colors duration-100 cursor-pointer
           ${
             isActive
-              ? 'bg-blue-600/20 text-blue-400'
-              : 'text-[var(--foreground)]/70 hover:bg-[var(--foreground)]/8 hover:text-[var(--foreground)]'
+              ? 'bg-primary/15 text-primary'
+              : 'text-[var(--foreground)]/75 hover:bg-[var(--foreground)]/10 hover:text-[var(--foreground)]'
           }
           ${isLoading ? 'opacity-60 cursor-wait' : ''}
         `}
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+        style={{ paddingLeft: `${depth * 14 + 6}px` }}
         title={node.path}
       >
-        <span className="text-xs shrink-0">{icon}</span>
-        <span className="truncate">{node.name}</span>
-        {isLoading && (
-          <span className="ml-auto text-[10px] opacity-60">⏳</span>
+        {/* Chevron for folders, invisible spacer for files so names align */}
+        {node.type === 'directory' ? (
+          <Chevron className="h-3.5 w-3.5 shrink-0 opacity-60" />
+        ) : (
+          <span className="w-3.5 shrink-0" aria-hidden />
         )}
-        {node.type === 'directory' && (
-          <span className="ml-auto text-[10px] text-[var(--foreground)]/30">
-            {isExpanded ? '▾' : '▸'}
-          </span>
+
+        {/* File/folder icon */}
+        <Icon
+          className="h-4 w-4 shrink-0"
+          style={{ color }}
+          strokeWidth={isActive ? 2 : 1.75}
+        />
+
+        {/* Name */}
+        <span className="truncate">{node.name}</span>
+
+        {isLoading && (
+          <span className="ml-auto text-[10px] opacity-60">loading</span>
         )}
       </button>
 

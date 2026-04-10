@@ -19,6 +19,11 @@ import { useAuth } from '@/hooks/useAuth'
 import { useDraftSave } from '@/hooks/useDraftSave'
 import { useEditorStore, type FileNode } from '@/store/editorStore'
 import { ChatPanel } from '@/components/chat/ChatPanel'
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from '@/components/ui/resizable'
 import { CURSOR_COLORS } from '@/types/session'
 
 function formatRelativeTime(date: Date): string {
@@ -328,12 +333,16 @@ export default function SessionPage({
   )
 
   return (
-    <div className="h-screen flex flex-col bg-[#1e1e1e] text-white overflow-hidden">
+    <div className="h-screen flex flex-col bg-background text-foreground overflow-hidden">
       {/* ── Top bar ── */}
       <SessionHeader
         sessionId={sessionId}
         connectionStatus={connectionStatus}
         participantCount={remoteUsers.length + 1}
+        repoName={
+          repoInfo ? `${repoInfo.owner}/${repoInfo.repo}` : undefined
+        }
+        branch={repoInfo?.branch}
         onSave={save}
         saveStatus={saveStatus}
         hasDirtyFiles={hasDirtyFiles}
@@ -342,118 +351,129 @@ export default function SessionPage({
         onCommitReverted={handleCommitReverted}
       />
 
-      {/* ── Main content area ── */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* ── Left sidebar: File tree ── */}
-        <div className="w-60 shrink-0 border-r border-white/10 bg-[#252526] flex flex-col">
-          {sessionError ? (
-            <div className="p-4 text-xs text-red-400">{sessionError}</div>
-          ) : (
-            <FileTree
-              className="flex-1"
-              repoOwner={repoInfo?.owner ?? null}
-              repoName={repoInfo?.repo ?? null}
-              sessionId={sessionId}
-            />
-          )}
-
-          {/* ── Participant list ── */}
-          <div className="border-t border-white/10">
-            <ParticipantList
-              remoteUsers={remoteUsers}
-              currentUser={currentUser}
-            />
-          </div>
-        </div>
-
-        {/* ── Center: Editor panel ── */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Tab bar */}
-          <EditorTabs />
-
-          {/* Editor area */}
-          <div className="flex-1 relative">
-            {activeTab ? (
-              <CodeEditor
-                // `path` forces a distinct Monaco model per file, so switching
-                // tabs swaps models instead of replacing content in one shared
-                // model. Essential for the Y.Text-per-file binding.
-                path={activeTab.path}
-                language={activeTab.language}
-                onMount={handleEditorMount}
-                settings={settings}
-              />
+      {/* ── Main content area — 3 resizable panels ── */}
+      <ResizablePanelGroup
+        orientation="horizontal"
+        className="flex-1 overflow-hidden"
+      >
+        {/* ── Left: File tree ── */}
+        <ResizablePanel
+          defaultSize={18}
+          minSize={10}
+          className="overflow-hidden border-r border-border bg-card"
+        >
+          <div className="flex h-full min-w-0 flex-col overflow-hidden">
+            {sessionError ? (
+              <div className="p-4 text-xs text-destructive">{sessionError}</div>
             ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center text-white/30">
-                  <div className="text-5xl mb-4">📝</div>
-                  <p className="text-lg font-medium">No file open</p>
-                  <p className="text-sm mt-1">
-                    Select a file from the explorer to start editing
-                  </p>
-                </div>
-              </div>
+              <FileTree
+                className="flex-1 min-w-0"
+                repoOwner={repoInfo?.owner ?? null}
+                repoName={repoInfo?.repo ?? null}
+                sessionId={sessionId}
+              />
             )}
-          </div>
 
-          {/* ── Status bar ── */}
-          <div className="flex items-center justify-between px-3 h-6 text-[11px] bg-[#007acc] text-white shrink-0">
-            <div className="flex items-center gap-3">
-              {/* Connection status */}
-              <span className="flex items-center gap-1.5">
-                <span
-                  className={`w-2 h-2 rounded-full ${
-                    connectionStatus === 'connected'
-                      ? 'bg-green-400'
-                      : connectionStatus === 'connecting'
-                        ? 'bg-yellow-400 animate-pulse'
-                        : 'bg-red-400'
-                  }`}
+            {/* ── Participant list ── */}
+            <div className="min-w-0 border-t border-border">
+              <ParticipantList
+                remoteUsers={remoteUsers}
+                currentUser={currentUser}
+              />
+            </div>
+          </div>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
+
+        {/* ── Center: Editor ── */}
+        <ResizablePanel defaultSize={58} minSize={20} className="overflow-hidden">
+          <div className="flex h-full flex-col min-w-0 overflow-hidden">
+            {/* Tab bar */}
+            <EditorTabs />
+
+            {/* Editor area */}
+            <div className="flex-1 relative">
+              {activeTab ? (
+                <CodeEditor
+                  path={activeTab.path}
+                  language={activeTab.language}
+                  onMount={handleEditorMount}
+                  settings={settings}
                 />
-                {connectionStatus === 'connected'
-                  ? 'Connected'
-                  : connectionStatus === 'connecting'
-                    ? 'Connecting...'
-                    : 'Disconnected'}
-              </span>
-
-              {/* Collab status */}
-              {isReady && (
-                <span className="opacity-70">
-                  {remoteUsers.length > 0
-                    ? `${remoteUsers.length + 1} collaborators`
-                    : 'Solo editing'}
-                </span>
-              )}
-
-              {/* Save status */}
-              {saveStatus === 'saving' && <span className="opacity-70">Saving...</span>}
-              {saveStatus === 'error' && <span className="text-red-300">Save failed</span>}
-              {saveStatus === 'saved' && lastSavedAt && <span className="opacity-70">Saved just now</span>}
-              {saveStatus === 'idle' && lastSavedAt && (
-                <span className="opacity-70">Saved {formatRelativeTime(lastSavedAt)} ago</span>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center text-white/30">
+                    <p className="text-lg font-medium">No file open</p>
+                    <p className="text-sm mt-1">
+                      Select a file from the explorer to start editing
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
 
-            <div className="flex items-center gap-3">
-              {activeTab && (
-                <>
-                  <span className="opacity-70">{activeTab.language}</span>
-                  <span className="opacity-70">
-                    Tab Size: {settings.tabSize}
+            {/* ── Status bar ── */}
+            <div className="flex items-center justify-between px-3 h-6 text-[11px] bg-card border-t border-border text-muted-foreground shrink-0">
+              <div className="flex items-center gap-3">
+                {/* Connection status */}
+                <span className="flex items-center gap-1.5">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      connectionStatus === 'connected'
+                        ? 'bg-emerald-500'
+                        : connectionStatus === 'connecting'
+                          ? 'bg-yellow-500 animate-pulse'
+                          : 'bg-red-500'
+                    }`}
+                  />
+                  {connectionStatus === 'connected'
+                    ? 'Connected'
+                    : connectionStatus === 'connecting'
+                      ? 'Connecting...'
+                      : 'Disconnected'}
+                </span>
+
+                {/* Collab status */}
+                {isReady && (
+                  <span>
+                    {remoteUsers.length > 0
+                      ? `${remoteUsers.length + 1} collaborators`
+                      : 'Solo editing'}
                   </span>
-                  <span className="opacity-70">UTF-8</span>
-                </>
-              )}
+                )}
+
+                {/* Save status */}
+                {saveStatus === 'saving' && <span>Saving...</span>}
+                {saveStatus === 'error' && <span className="text-destructive">Save failed</span>}
+                {saveStatus === 'saved' && lastSavedAt && <span>Saved just now</span>}
+                {saveStatus === 'idle' && lastSavedAt && (
+                  <span>Saved {formatRelativeTime(lastSavedAt)} ago</span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                {activeTab && (
+                  <>
+                    <span>{activeTab.language}</span>
+                    <span>Tab Size: {settings.tabSize}</span>
+                    <span>UTF-8</span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </ResizablePanel>
 
-        {/* ── Right sidebar: Chat (Dev 4) ── */}
-        <div className="w-72 shrink-0">
-          <ChatPanel sessionId={sessionId} />
-        </div>
-      </div>
+        <ResizableHandle withHandle />
+
+        {/* ── Right: Chat ── */}
+        <ResizablePanel defaultSize={24} minSize={12} className="overflow-hidden">
+          <div className="h-full min-w-0 overflow-hidden">
+            <ChatPanel sessionId={sessionId} />
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   )
 }
