@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -7,10 +8,14 @@ import {
   HelpCircle,
   LayoutDashboard,
   LogOut,
+  Radio,
   Settings,
+  Users,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { useSessionStore } from '@/store/sessionStore'
 import { cn } from '@/lib/utils'
+import type { Session } from '@/types'
 
 const primaryNav = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
@@ -23,7 +28,47 @@ const secondaryNav = [
 
 export function Sidebar() {
   const pathname = usePathname()
-  const { logout } = useAuth()
+  const { logout, isAuthenticated } = useAuth()
+  const sessions = useSessionStore((s) => s.sessions)
+  const setSessions = useSessionStore((s) => s.setSessions)
+
+  // The dashboard page fetches sessions and populates the store, but the
+  // sidebar also renders on /dashboard/help and /dashboard/profile where
+  // that fetch hasn't run. Do a one-shot fill-if-empty so the card isn't
+  // stuck in a "no data" state when the user deep-links into a subpage.
+  useEffect(() => {
+    if (!isAuthenticated || sessions.length > 0) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch('/api/sessions', { cache: 'no-store' })
+        if (!res.ok) return
+        const json = await res.json()
+        if (!cancelled && json?.success && Array.isArray(json.data)) {
+          setSessions(json.data as Session[])
+        }
+      } catch (err) {
+        console.error('[Sidebar] session fetch failed:', err)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, sessions.length, setSessions])
+
+  // "Active now" — live sessions + total seats across them. The owner is
+  // not always in the participants map (see join route), so count them
+  // separately when absent.
+  const { liveCount, seatCount } = useMemo(() => {
+    const live = sessions.filter((s) => s.active)
+    let seats = 0
+    for (const s of live) {
+      const participantIds = s.participants ? Object.keys(s.participants) : []
+      seats += participantIds.length
+      if (s.owner && !participantIds.includes(s.owner)) seats += 1
+    }
+    return { liveCount: live.length, seatCount: seats }
+  }, [sessions])
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return pathname === '/dashboard'
@@ -111,6 +156,46 @@ export function Sidebar() {
           Logout
         </button>
       </nav>
+
+      {/* Active now — live sessions snapshot */}
+      <Link
+        href="/dashboard#active-sessions"
+        className="group mt-auto block rounded-2xl border border-border/60 bg-card/60 p-4 transition-colors hover:border-primary/40 hover:bg-accent"
+      >
+        <div className="mb-2.5 flex items-center justify-between">
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <Radio className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+            Active now
+          </span>
+          {liveCount > 0 && (
+            <span className="relative flex h-2 w-2" aria-hidden>
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+          )}
+        </div>
+
+        {liveCount === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            No live sessions. Pick a repo to start one.
+          </p>
+        ) : (
+          <div className="flex items-baseline gap-3">
+            <div>
+              <p className="text-2xl font-extrabold leading-none text-foreground">
+                {liveCount}
+              </p>
+              <p className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                session{liveCount === 1 ? '' : 's'}
+              </p>
+            </div>
+            <div className="ml-auto flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
+              <Users className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+              {seatCount}
+            </div>
+          </div>
+        )}
+      </Link>
     </aside>
   )
 }
