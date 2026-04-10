@@ -13,12 +13,13 @@ import type { User } from '@/types'
 // on the same cookie). We fall back to this whenever Firebase client auth
 // reports no user — typically after a hard refresh before IndexedDB has
 // rehydrated, or when client persistence was cleared but the cookie survived.
-async function hydrateFromServerSession(): Promise<User | null> {
+async function hydrateFromServerSession(signal: AbortSignal): Promise<User | null> {
   try {
     const res = await fetch('/api/auth/me', {
       method: 'GET',
       cache: 'no-store',
       credentials: 'same-origin',
+      signal,
     })
     if (!res.ok) return null
     const json = await res.json()
@@ -34,6 +35,12 @@ async function hydrateFromServerSession(): Promise<User | null> {
       updatedAt: new Date(raw.updatedAt),
     }
   } catch (err) {
+    // AbortError fires when the AuthProvider unmounts mid-flight (e.g. the
+    // proxy is redirecting the user to /login). That's expected, not a bug.
+    if (err instanceof DOMException && err.name === 'AbortError') return null
+    // "Failed to fetch" TypeErrors happen when navigation tears the document
+    // down while the request is still in flight — same situation, no-op.
+    if (err instanceof TypeError) return null
     console.error('[AuthProvider] /api/auth/me failed:', err)
     return null
   }
@@ -45,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setLoading(true)
     let cancelled = false
+    const abortController = new AbortController()
 
     const unsubscribe = onAuthChange(async (firebaseUser) => {
       if (firebaseUser) {
@@ -69,7 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // may still be valid (e.g. hard refresh before client persistence
         // rehydrates). Ask the server before clearing the store, otherwise
         // the dashboard header flashes a blank avatar for authenticated users.
-        const serverUser = await hydrateFromServerSession()
+        if (cancelled) return
+        const serverUser = await hydrateFromServerSession(abortController.signal)
         if (cancelled) return
         if (serverUser) {
           setUser(serverUser)
@@ -81,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true
+      abortController.abort()
       unsubscribe()
     }
   }, [setUser, setLoading, clearUser])

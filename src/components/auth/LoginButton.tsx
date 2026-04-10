@@ -3,6 +3,7 @@
 'use client'
 
 import { useAuth } from '@/hooks/useAuth'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
 interface LoginButtonProps {
@@ -11,12 +12,23 @@ interface LoginButtonProps {
 
 export function LoginButton({ className }: LoginButtonProps) {
   const { login } = useAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
 
   const handleClick = async () => {
     setIsLoading(true)
     try {
-      await login()
+      // login() awaits loginWithGitHub() end-to-end, which includes the
+      // POST /api/auth/session call that sets the server session cookie.
+      // When this resolves successfully, we know the cookie is in place,
+      // so it's safe to navigate to a protected route without racing the
+      // proxy.ts cookie gate.
+      const ok = await login()
+      if (ok) {
+        const redirect = searchParams.get('redirect') ?? '/dashboard'
+        router.replace(redirect)
+      }
     } finally {
       setIsLoading(false)
     }

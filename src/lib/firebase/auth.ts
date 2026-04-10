@@ -32,6 +32,17 @@ async function fetchGitHubProfile(accessToken: string): Promise<GitHubProfile> {
 
 // ── Login with GitHub OAuth ──
 
+// Module-level flag: set while loginWithGitHub() is running so that
+// syncServerSession() — which fires from the login page the moment Firebase
+// client auth reports a user — does not race the in-flight POST that sets
+// the server session cookie. Without this, onAuthChange fires mid-popup,
+// the login page probes /api/auth/session before the POST has even been
+// sent, gets a 401, and signs the user back out.
+let loginInFlight = false
+export function isLoginInFlight(): boolean {
+  return loginInFlight
+}
+
 /**
  * Triggers GitHub OAuth via Firebase popup.
  * After successful auth:
@@ -41,6 +52,15 @@ async function fetchGitHubProfile(accessToken: string): Promise<GitHubProfile> {
  * 4. Calls Dev 4's /api/auth/session contract passing both tokens to handle secure cookie + token storage
  */
 export async function loginWithGitHub(): Promise<User> {
+  loginInFlight = true
+  try {
+    return await loginWithGitHubInner()
+  } finally {
+    loginInFlight = false
+  }
+}
+
+async function loginWithGitHubInner(): Promise<User> {
   const provider = new GithubAuthProvider()
   provider.addScope('repo')
   provider.addScope('read:user')
@@ -147,15 +167,12 @@ export async function syncServerSession(): Promise<boolean> {
   // mint one without a fresh OAuth round-trip, sign out so the user sees the
   // login button instead of looping.
   //
-  // Quick probe: does the server currently consider us authenticated?
+  // Probe the canonical session endpoint. GET /api/auth/session verifies the
+  // cookie end-to-end via adminAuth.verifySessionCookie and returns 200 if
+  // valid, 401 otherwise. Do NOT probe unrelated protected routes here —
+  // bugs in those routes would silently sign the user out.
   const probe = await fetch('/api/auth/session', { method: 'GET', cache: 'no-store' })
-  if (probe.ok) {
-    // The server still has a valid cookie (or will accept the current one).
-    // Additional check: hit a protected endpoint to confirm the cookie
-    // actually verifies, since the GET handler is a static stub.
-    const protectedProbe = await fetch('/api/sessions', { method: 'GET', cache: 'no-store' })
-    if (protectedProbe.status !== 401) return true
-  }
+  if (probe.ok) return true
 
   // Server rejected us. We cannot re-mint without a GitHub accessToken, so
   // sign out of Firebase and surface the login button.

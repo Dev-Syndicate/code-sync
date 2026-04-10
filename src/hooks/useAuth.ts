@@ -12,7 +12,7 @@ interface UseAuthReturn {
   user: User | null
   loading: boolean
   isAuthenticated: boolean
-  login: () => Promise<void>
+  login: () => Promise<boolean>
   logout: () => Promise<void>
 }
 
@@ -20,13 +20,19 @@ export function useAuth(): UseAuthReturn {
   const { user, loading, isAuthenticated } = useAuthStore()
   const addToast = useToastStore((s) => s.addToast)
 
-  const login = async () => {
+  const login = async (): Promise<boolean> => {
     try {
       await loginWithGitHub()
       addToast('success', 'Logged in successfully!')
+      return true
     } catch (error) {
+      // Log the full error — we were previously swallowing it, which made
+      // silent login failures almost impossible to diagnose.
       console.error('[useAuth] login failed:', error)
-      addToast('error', 'Login failed. Please try again.')
+      const message =
+        error instanceof Error ? error.message : 'Login failed. Please try again.'
+      addToast('error', message)
+      return false
     }
   }
 

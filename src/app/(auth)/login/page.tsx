@@ -5,7 +5,7 @@ import { Suspense, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { LoginButton } from '@/components/auth/LoginButton'
-import { syncServerSession } from '@/lib/firebase/auth'
+import { syncServerSession, isLoginInFlight } from '@/lib/firebase/auth'
 
 function LoginContent() {
   const { isAuthenticated, loading } = useAuth()
@@ -13,12 +13,16 @@ function LoginContent() {
   const searchParams = useSearchParams()
   const syncedRef = useRef(false)
 
-  // When the Firebase client reports an authenticated user, we can't just
-  // redirect — the server session cookie may be missing/invalid, which would
-  // bounce us straight back here and cause an infinite loop. Instead, ask
-  // the server to confirm (and repair if possible) the session first.
+  // Fallback path for "user is already signed in when they land on /login"
+  // (e.g. they navigated here manually). The happy path is that LoginButton
+  // triggers loginWithGitHub(), waits for the POST /api/auth/session to
+  // complete, and then redirects itself — this effect must NOT race that
+  // flow, or it probes the cookie before it's set and signs the user out.
   useEffect(() => {
     if (loading || !isAuthenticated || syncedRef.current) return
+    // Don't interfere with an in-progress loginWithGitHub() — its own POST
+    // will set the cookie, and LoginButton will redirect when it resolves.
+    if (isLoginInFlight()) return
     syncedRef.current = true
 
     void (async () => {
