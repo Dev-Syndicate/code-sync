@@ -1,10 +1,11 @@
 // POST /api/auth/session
-// Called by Dev 1 after Firebase signInWithPopup succeeds.
+// Called by loginWithGitHub() after Firebase signInWithPopup succeeds.
 // Body: { idToken: string, accessToken: string }
 //
 // 1. Verifies the Firebase ID token via Admin SDK
 // 2. Stores the GitHub accessToken in /users/{uid}/private/tokens
-// 3. Sets an HTTP-only session cookie for middleware.ts to read
+// 3. Mints a long-lived session cookie via adminAuth.createSessionCookie
+//    and sets it as the HTTP-only `session` cookie that proxy.ts reads.
 
 import { type NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
@@ -15,6 +16,16 @@ import { FieldValue } from 'firebase-admin/firestore'
 interface SessionRequestBody {
   idToken:     string
   accessToken: string
+}
+
+// 7 days — the maximum Firebase allows for session cookies is 14 days.
+const SESSION_COOKIE_MAX_AGE_MS = 60 * 60 * 24 * 7 * 1000
+
+export async function GET() {
+  return NextResponse.json(
+    { message: 'POST { idToken, accessToken } to create a session.' },
+    { status: 200 }
+  )
 }
 
 export async function POST(req: NextRequest) {
@@ -37,7 +48,8 @@ export async function POST(req: NextRequest) {
   try {
     const decoded = await adminAuth.verifyIdToken(idToken)
     uid = decoded.uid
-  } catch {
+  } catch (err) {
+    console.error('[POST /api/auth/session] verifyIdToken failed:', err)
     return apiError('AUTH_EXPIRED', 'Invalid or expired ID token.', 401)
   }
 
@@ -49,18 +61,28 @@ export async function POST(req: NextRequest) {
       .collection('private')
       .doc('tokens')
       .set({ accessToken, updatedAt: FieldValue.serverTimestamp() })
-  } catch {
+  } catch (err) {
+    console.error('[POST /api/auth/session] token write failed:', err)
     return apiError('INTERNAL_ERROR', 'Failed to store access token.', 500)
   }
 
-  // 3. Set HTTP-only session cookie  (stores the raw Firebase ID token)
-  //    middleware.ts reads this to protect routes
+  // 3. Mint a real session cookie and set it HTTP-only.
+  let sessionCookie: string
+  try {
+    sessionCookie = await adminAuth.createSessionCookie(idToken, {
+      expiresIn: SESSION_COOKIE_MAX_AGE_MS,
+    })
+  } catch (err) {
+    console.error('[POST /api/auth/session] createSessionCookie failed:', err)
+    return apiError('INTERNAL_ERROR', 'Failed to create session cookie.', 500)
+  }
+
   const cookieStore = await cookies()
-  cookieStore.set('session', idToken, {
+  cookieStore.set('session', sessionCookie, {
     httpOnly: true,
     secure:   process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge:   60 * 60 * 24 * 7,   // 7 days
+    maxAge:   SESSION_COOKIE_MAX_AGE_MS / 1000,
     path:     '/',
   })
 

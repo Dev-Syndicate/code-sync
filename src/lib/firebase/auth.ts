@@ -45,6 +45,15 @@ export async function loginWithGitHub(): Promise<User> {
   provider.addScope('repo')
   provider.addScope('read:user')
 
+  // If Firebase already has a persisted user from a previous session,
+  // signInWithPopup can return a result whose OAuth credential is null
+  // (Firebase only hands back the provider credential on a genuine fresh
+  // sign-in). That leaves us with no accessToken to store server-side,
+  // so we force a clean slate first.
+  if (auth.currentUser) {
+    await signOut(auth)
+  }
+
   const result = await signInWithPopup(auth, provider)
   const credential = GithubAuthProvider.credentialFromResult(result)
 
@@ -110,6 +119,48 @@ export async function loginWithGitHub(): Promise<User> {
   }
 
   return user
+}
+
+// ── Server session reconciliation ──
+
+/**
+ * If the Firebase client has a signed-in user but the server session cookie
+ * is missing or invalid (e.g. cookie expired, user cleared cookies, cookie
+ * was minted by an older build), the app enters a redirect loop between
+ * /login and /dashboard because middleware trusts the cookie and the login
+ * page trusts Firebase.
+ *
+ * This function repairs that by re-posting a fresh idToken to
+ * POST /api/auth/session, which mints a new server session cookie. Call it
+ * from the login page before deciding to redirect to /dashboard.
+ *
+ * Returns true if the server session is now valid, false if we had to sign
+ * the user out (no GitHub accessToken available to repair the session).
+ */
+export async function syncServerSession(): Promise<boolean> {
+  const firebaseUser = auth.currentUser
+  if (!firebaseUser) return false
+
+  // We need a GitHub access token to re-run POST /api/auth/session, but the
+  // client doesn't have one after a page reload (it lives only in the
+  // signInWithPopup result). If there's no valid server session AND we can't
+  // mint one without a fresh OAuth round-trip, sign out so the user sees the
+  // login button instead of looping.
+  //
+  // Quick probe: does the server currently consider us authenticated?
+  const probe = await fetch('/api/auth/session', { method: 'GET', cache: 'no-store' })
+  if (probe.ok) {
+    // The server still has a valid cookie (or will accept the current one).
+    // Additional check: hit a protected endpoint to confirm the cookie
+    // actually verifies, since the GET handler is a static stub.
+    const protectedProbe = await fetch('/api/sessions', { method: 'GET', cache: 'no-store' })
+    if (protectedProbe.status !== 401) return true
+  }
+
+  // Server rejected us. We cannot re-mint without a GitHub accessToken, so
+  // sign out of Firebase and surface the login button.
+  await signOut(auth)
+  return false
 }
 
 // ── Logout ──

@@ -1,9 +1,14 @@
 // POST /api/commits
 // Full commit & push flow with auto-generated co-author credits.
 //
-// Body: CommitPayload {
-//   sessionId, files, userMessage, committerId, repoOwner, repoName
+// Payload shape (as sent by CommitModal/Dev 3):
+// {
+//   sessionId: string
+//   message:   string
+//   files:     { path: string; content: string; sha: string }[]
 // }
+//
+// Repo owner/name, branch, and committer are derived server-side from the session doc.
 
 import { type NextRequest } from 'next/server'
 import { apiSuccess, apiError } from '@/lib/api/response'
@@ -13,10 +18,16 @@ import { commitFiles } from '@/lib/github/commits'
 import { adminDb } from '@/lib/firebase/admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { GitHubApiError } from '@/lib/github/api'
-import type { CommitPayload } from '@/types/github'
+import type { CommitFile } from '@/types/github'
+
+interface CommitRequestBody {
+  sessionId: string
+  message:   string
+  files:     (CommitFile & { sha?: string })[]
+}
 
 export async function POST(req: NextRequest) {
-  // 1. Auth
+  // 1. Auth — get the current user from the session cookie (uid)
   let uid: string
   try {
     const ctx = await getAuthContext(req)
@@ -26,40 +37,42 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. Parse & validate body
-  let body: CommitPayload
+  let body: CommitRequestBody
   try {
     body = await req.json()
   } catch {
     return apiError('VALIDATION_ERROR', 'Invalid request body.', 400)
   }
 
-  const { sessionId, files, userMessage, committerId, repoOwner, repoName } = body
+  const { sessionId, message, files } = body
 
-  if (!sessionId || !files?.length || !userMessage || !committerId || !repoOwner || !repoName) {
-    return apiError(
-      'VALIDATION_ERROR',
-      'sessionId, files, userMessage, committerId, repoOwner, and repoName are required.',
-      400
-    )
+  if (!sessionId || !message?.trim()) {
+    return apiError('VALIDATION_ERROR', 'sessionId and message are required.', 400)
   }
 
-  if (committerId !== uid) {
-    return apiError('FORBIDDEN', 'committerId must match authenticated user.', 403)
+  if (!files?.length) {
+    return apiError('VALIDATION_ERROR', 'No files to commit.', 400)
   }
 
-  // 3. Verify the committer is the session owner
+  // 3. Load session doc — get repo details and verify ownership
   const sessionSnap = await adminDb.collection('sessions').doc(sessionId).get()
   if (!sessionSnap.exists) {
     return apiError('NOT_FOUND', 'Session not found.', 404)
   }
 
   const sessionData = sessionSnap.data()!
+
   if (!sessionData.active) {
     return apiError('SESSION_CLOSED', 'This session is no longer active.', 400)
   }
+
   if (sessionData.owner !== uid) {
     return apiError('FORBIDDEN', 'Only the session owner can commit.', 403)
   }
+
+  const repoOwner = sessionData.repoOwner as string
+  const repoName  = sessionData.repo      as string
+  const branch    = (sessionData.branch as string) || 'main'
 
   // 4. Get GitHub token
   let token: string
@@ -72,21 +85,23 @@ export async function POST(req: NextRequest) {
   // 5. Build commit message with co-author credits
   let commitMessage: string
   try {
-    commitMessage = await buildCommitMessage(sessionId, committerId, userMessage)
+    commitMessage = await buildCommitMessage(sessionId, uid, message.trim())
   } catch {
     // Non-fatal — fall back to plain message
-    commitMessage = userMessage
+    commitMessage = message.trim()
   }
 
   // 6. Commit to GitHub via Git Tree API
+  const commitPayload: CommitFile[] = files.map(({ path, content }) => ({ path, content }))
+
   let commitSha: string
   try {
     commitSha = await commitFiles({
       token,
       owner:   repoOwner,
       repo:    repoName,
-      branch:  sessionData.branch ?? 'main',
-      files,
+      branch,
+      files:   commitPayload,
       message: commitMessage,
     })
   } catch (err) {
@@ -97,7 +112,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 7. Post system message to chat
-  const userDoc = await adminDb.collection('users').doc(uid).get()
+  const userDoc  = await adminDb.collection('users').doc(uid).get()
   const userData = userDoc.data()
 
   if (userData) {
@@ -109,14 +124,14 @@ export async function POST(req: NextRequest) {
         userId:      uid,
         username:    userData.username,
         avatar:      userData.avatar,
-        message:     `Committed: ${userMessage}`,
+        message:     `Committed: ${message.trim()}`,
         type:        'system',
         systemEvent: 'commit',
         timestamp:   FieldValue.serverTimestamp(),
       })
   }
 
-  // 8. Update session's lastDraftAt to null (draft deleted after commit)
+  // 8. Update session — clear lastDraftAt marker
   await adminDb.collection('sessions').doc(sessionId).update({
     lastDraftAt: null,
   })

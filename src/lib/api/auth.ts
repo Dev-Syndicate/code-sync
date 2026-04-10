@@ -1,5 +1,6 @@
 // Server-side auth utilities for API routes
-// Verifies the session cookie and returns the Firebase UID
+// Verifies the Firebase session cookie (minted by POST /api/auth/session)
+// and returns the authenticated Firebase UID.
 
 import { type NextRequest } from 'next/server'
 import { adminAuth, adminDb } from '@/lib/firebase/admin'
@@ -18,9 +19,12 @@ export async function getAuthContext(req: NextRequest): Promise<AuthContext> {
   }
 
   try {
-    const decoded = await adminAuth.verifyIdToken(sessionCookie)
+    // checkRevoked=true hits Firebase Auth to ensure the user hasn't been
+    // disabled or had their refresh tokens revoked. Worth the ~50ms.
+    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true)
     return { uid: decoded.uid, email: decoded.email }
-  } catch {
+  } catch (err) {
+    console.error('[getAuthContext] verifySessionCookie failed:', err)
     throw new Error('AUTH_EXPIRED')
   }
 }

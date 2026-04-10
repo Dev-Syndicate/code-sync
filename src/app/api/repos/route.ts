@@ -27,7 +27,8 @@ export async function GET(req: NextRequest) {
   let token: string
   try {
     token = await getGitHubToken(uid)
-  } catch {
+  } catch (err) {
+    console.error('[GET /api/repos] getGitHubToken failed for uid', uid, err)
     return apiError('GITHUB_ERROR', 'GitHub token not found. Please sign in again.', 401)
   }
 

@@ -31,7 +31,14 @@ export async function POST(req: NextRequest) {
     return apiError('VALIDATION_ERROR', 'Invalid request body.', 400)
   }
 
-  const { repo, repoOwner, repoUrl, branch = 'main', owner, maxParticipants = 4 } = body
+  const { repo, repoOwner, repoUrl, branch = 'main', owner, maxParticipants = 4 } = body as {
+    repo:             string
+    repoOwner:        string
+    repoUrl:          string
+    branch?:          string
+    owner:            string
+    maxParticipants?: number
+  }
 
   if (!repo || !repoOwner || !repoUrl || !owner) {
     return apiError('VALIDATION_ERROR', 'repo, repoOwner, repoUrl, and owner are required.', 400)
@@ -141,11 +148,16 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // We intentionally do NOT add `.orderBy('createdAt', 'desc')` here —
+    // combining it with the `active == true` filter would require a composite
+    // index on (active, createdAt desc) which isn't deployed. The result set
+    // is already capped at 50 and then post-filtered to sessions the user is
+    // part of, so sorting in memory is cheap and keeps the dashboard working
+    // without waiting on index deployment.
     const snap = await adminDb
       .collection('sessions')
       .where('active', '==', true)
-      .orderBy('createdAt', 'desc')
-      .limit(20)
+      .limit(50)
       .get()
 
     const sessions = snap.docs
@@ -154,9 +166,15 @@ export async function GET(req: NextRequest) {
         return data.owner === uid || uid in (data.participants ?? {})
       })
       .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .sort((a, b) => {
+        const at = (a as { createdAt?: { toMillis?: () => number } }).createdAt?.toMillis?.() ?? 0
+        const bt = (b as { createdAt?: { toMillis?: () => number } }).createdAt?.toMillis?.() ?? 0
+        return bt - at
+      })
 
     return apiSuccess(sessions)
-  } catch {
+  } catch (err) {
+    console.error('[GET /api/sessions] failed:', err)
     return apiError('INTERNAL_ERROR', 'Failed to list sessions.', 500)
   }
 }
