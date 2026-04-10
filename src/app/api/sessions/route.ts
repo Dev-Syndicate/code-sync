@@ -1,10 +1,179 @@
-import { NextResponse } from 'next/server'
+// POST /api/sessions  → Create a new session
+// GET  /api/sessions  → List user's active sessions
 
-// TODO: Dev 4 — Create / get sessions
-export async function GET() {
-  return NextResponse.json({ success: true, data: [] })
+import { type NextRequest } from 'next/server'
+import { apiSuccess, apiError } from '@/lib/api/response'
+import { getAuthContext, getGitHubToken } from '@/lib/api/auth'
+import { fetchRepoFiles } from '@/lib/github/repos'
+import { adminDb } from '@/lib/firebase/admin'
+import { FieldValue } from 'firebase-admin/firestore'
+import { GitHubApiError } from '@/lib/github/api'
+import { CURSOR_COLORS } from '@/types/session'
+import type { CreateSessionInput, Session } from '@/types/session'
+import { randomUUID } from 'crypto'
+
+// ── POST — Create session ─────────────────────────────────────────────────────
+export async function POST(req: NextRequest) {
+  // 1. Auth
+  let uid: string
+  try {
+    const ctx = await getAuthContext(req)
+    uid = ctx.uid
+  } catch {
+    return apiError('AUTH_REQUIRED', 'Authentication required.', 401)
+  }
+
+  // 2. Parse body
+  let body: CreateSessionInput
+  try {
+    body = await req.json()
+  } catch {
+    return apiError('VALIDATION_ERROR', 'Invalid request body.', 400)
+  }
+
+  const { repo, repoOwner, repoUrl, branch = 'main', owner, maxParticipants = 4 } = body
+
+  if (!repo || !repoOwner || !repoUrl || !owner) {
+    return apiError('VALIDATION_ERROR', 'repo, repoOwner, repoUrl, and owner are required.', 400)
+  }
+
+  if (owner !== uid) {
+    return apiError('FORBIDDEN', 'Session owner must match authenticated user.', 403)
+  }
+
+  // 3. Get user profile for participant entry
+  let token: string
+  let userDoc: FirebaseFirestore.DocumentSnapshot
+  try {
+    token   = await getGitHubToken(uid)
+    userDoc = await adminDb.collection('users').doc(uid).get()
+  } catch {
+    return apiError('GITHUB_ERROR', 'Could not retrieve user data.', 500)
+  }
+
+  if (!userDoc.exists) {
+    return apiError('NOT_FOUND', 'User profile not found.', 404)
+  }
+
+  const userData = userDoc.data()!
+
+  // 4. Load repo file list from GitHub
+  let files: { path: string; sha: string; language: string }[] = []
+  try {
+    const rawFiles = await fetchRepoFiles(token, repoOwner, repo, branch)
+    files = rawFiles.map((f) => ({
+      path:     f.path,
+      sha:      f.sha,
+      language: inferLanguage(f.path),
+    }))
+  } catch (err) {
+    if (err instanceof GitHubApiError) {
+      return apiError('GITHUB_ERROR', `Failed to load repo files: ${err.message}`, 502)
+    }
+    return apiError('INTERNAL_ERROR', 'Failed to load repository files.', 500)
+  }
+
+  // 5. Create session document
+  const sessionId = randomUUID()
+  const sessionData = {
+    repo,
+    repoOwner,
+    repoUrl,
+    branch,
+    owner: uid,
+    participants: {
+      [uid]: {
+        username: userData.username,
+        avatar:   userData.avatar,
+        color:    CURSOR_COLORS[0],
+        joinedAt: FieldValue.serverTimestamp(),
+      },
+    },
+    files,
+    active:          true,
+    maxParticipants,
+    createdAt:       FieldValue.serverTimestamp(),
+    closedAt:        null,
+    lastDraftAt:     null,
+  }
+
+  try {
+    await adminDb.collection('sessions').doc(sessionId).set(sessionData)
+  } catch {
+    return apiError('INTERNAL_ERROR', 'Failed to create session.', 500)
+  }
+
+  // 6. Post system message: "session started"
+  await adminDb
+    .collection('sessions')
+    .doc(sessionId)
+    .collection('chat')
+    .add({
+      userId:      uid,
+      username:    userData.username,
+      avatar:      userData.avatar,
+      message:     `${userData.username} started the session`,
+      type:        'system',
+      systemEvent: 'join',
+      timestamp:   FieldValue.serverTimestamp(),
+    })
+
+  const session: Session = {
+    id:             sessionId,
+    ...(sessionData as Omit<typeof sessionData, 'participants' | 'createdAt' | 'closedAt' | 'lastDraftAt'>),
+    participants:   sessionData.participants as Session['participants'],
+    createdAt:      FieldValue.serverTimestamp() as unknown as Session['createdAt'],
+    closedAt:       null,
+    lastDraftAt:    null,
+  }
+
+  return apiSuccess(session, 201)
 }
 
-export async function POST() {
-  return NextResponse.json({ success: true, data: null })
+// ── GET — List user's sessions ────────────────────────────────────────────────
+export async function GET(req: NextRequest) {
+  let uid: string
+  try {
+    const ctx = await getAuthContext(req)
+    uid = ctx.uid
+  } catch {
+    return apiError('AUTH_REQUIRED', 'Authentication required.', 401)
+  }
+
+  try {
+    const snap = await adminDb
+      .collection('sessions')
+      .where('active', '==', true)
+      .orderBy('createdAt', 'desc')
+      .limit(20)
+      .get()
+
+    const sessions = snap.docs
+      .filter((doc) => {
+        const data = doc.data()
+        return data.owner === uid || uid in (data.participants ?? {})
+      })
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
+
+    return apiSuccess(sessions)
+  } catch {
+    return apiError('INTERNAL_ERROR', 'Failed to list sessions.', 500)
+  }
+}
+
+// ── Language inference from file extension ────────────────────────────────────
+function inferLanguage(path: string): string {
+  const ext = path.split('.').pop()?.toLowerCase() ?? ''
+  const map: Record<string, string> = {
+    ts: 'typescript', tsx: 'typescript',
+    js: 'javascript', jsx: 'javascript',
+    py: 'python', rs: 'rust', go: 'go',
+    java: 'java', cpp: 'cpp', c: 'c',
+    cs: 'csharp', rb: 'ruby', php: 'php',
+    html: 'html', css: 'css', json: 'json',
+    md: 'markdown', yaml: 'yaml', yml: 'yaml',
+    sh: 'shell', sql: 'sql', kt: 'kotlin',
+    swift: 'swift', dart: 'dart',
+  }
+  return map[ext] ?? 'plaintext'
 }
