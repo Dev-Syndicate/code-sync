@@ -70,6 +70,7 @@ export function useMonacoYjsBinding({
     const ytext = ydoc.getText(`file:${activeFile}`)
 
     let binding: { destroy: () => void } | null = null
+    let bindingDestroyed = false
     let cancelled = false
 
     // y-monaco imports monaco-editor statically, which breaks SSR. Dynamic
@@ -120,6 +121,27 @@ export function useMonacoYjsBinding({
         new Set([editor]),
         provider.awareness
       )
+
+      // y-monaco auto-destroys the binding when Monaco's model fires
+      // `onWillDispose` (see y-monaco.js — `_monacoDisposeHandler`). That
+      // happens when @monaco-editor/react swaps `path` on file switch, BEFORE
+      // our React cleanup runs. If we then call `binding.destroy()` in
+      // cleanup, y-monaco will `ytext.unobserve` its internal observer a
+      // second time and Yjs throws "Tried to remove event handler that
+      // doesn't exist". Patch destroy so it's idempotent from our side.
+      const originalDestroy = binding.destroy.bind(binding)
+      binding.destroy = () => {
+        if (bindingDestroyed) return
+        bindingDestroyed = true
+        originalDestroy()
+      }
+      // Also mark it destroyed if Monaco disposes the model first, so our
+      // cleanup short-circuits rather than touching a half-torn-down binding.
+      const modelDisposeListener = model.onWillDispose(() => {
+        bindingDestroyed = true
+      })
+      // Stash on the binding so cleanup can dispose the listener too.
+      ;(binding as unknown as { _modelDisposeListener: { dispose: () => void } })._modelDisposeListener = modelDisposeListener
     })
 
     // Mirror Y.Text → Zustand tab content so save/draft/dirty flows keep
@@ -180,10 +202,24 @@ export function useMonacoYjsBinding({
 
     return () => {
       cancelled = true
-      ytext.unobserve(observer)
+      // Unobserve is guarded — if the ydoc was destroyed upstream (on session
+      // unmount) Yjs has already cleared its listener arrays and a second
+      // unobserve would throw "Tried to remove event handler that doesn't
+      // exist". Same defensive reasoning applies to the awareness off().
+      try {
+        ytext.unobserve(observer)
+      } catch {
+        // ignore — handler already gone
+      }
       provider.awareness.off('change', renderAwarenessStyles)
       styleEl.remove()
-      binding?.destroy()
+      const b = binding as
+        | (typeof binding & {
+            _modelDisposeListener?: { dispose: () => void }
+          })
+        | null
+      b?._modelDisposeListener?.dispose()
+      b?.destroy()
     }
   }, [editor, ydoc, provider, isReady, activeFile])
 }

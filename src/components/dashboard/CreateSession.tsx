@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/select'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { cn } from '@/lib/utils'
 import type { GitHubRepo } from '@/types'
 import { createSession } from '@/lib/session/create'
 import { useAuth } from '@/hooks/useAuth'
@@ -39,7 +38,6 @@ export function CreateSession({ repo, isOpen, onClose }: CreateSessionProps) {
   const { addSession } = useSessionStore()
 
   const [branch, setBranch] = useState(repo.default_branch)
-  const [maxParticipants, setMaxParticipants] = useState(4)
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -106,7 +104,6 @@ export function CreateSession({ repo, isOpen, onClose }: CreateSessionProps) {
         branch,
         owner: user?.uid ?? 'mock-user-id',
         files: [],
-        maxParticipants,
       })
 
       if (session) {
@@ -171,30 +168,6 @@ export function CreateSession({ repo, isOpen, onClose }: CreateSessionProps) {
           </Select>
         </div>
 
-        {/* Max Participants */}
-        <div className="space-y-2">
-          <Label>Max Participants</Label>
-          <div className="flex gap-2">
-            {[2, 3, 4].map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => setMaxParticipants(n)}
-                aria-pressed={maxParticipants === n}
-                className={cn(
-                  'flex-1 rounded-md py-2.5 text-sm font-semibold transition-all',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                  maxParticipants === n
-                    ? 'border-2 border-primary bg-primary/15 text-[var(--color-brand-mint)]'
-                    : 'border border-border bg-background text-muted-foreground hover:text-foreground'
-                )}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Error */}
         {error && (
           <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs text-destructive">
@@ -215,7 +188,7 @@ export function CreateSession({ repo, isOpen, onClose }: CreateSessionProps) {
             type="button"
             onClick={handleCreate}
             disabled={isCreating}
-            className="gap-1.5 sm:flex-[2]"
+            className="gap-1.5"
           >
             {isCreating ? (
               <>

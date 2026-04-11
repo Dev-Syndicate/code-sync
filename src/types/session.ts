@@ -33,7 +33,6 @@ export interface SessionDoc {
   participants: Record<string, Participant>
   files: FileEntry[]
   active: boolean
-  maxParticipants: number
   createdAt: Timestamp
   closedAt: Timestamp | null
   lastDraftAt: Timestamp | null
@@ -48,9 +47,7 @@ export interface Session extends SessionDoc {
 export type CreateSessionInput = Pick<
   SessionDoc,
   'repo' | 'repoOwner' | 'repoUrl' | 'branch' | 'owner' | 'files'
-> & {
-  maxParticipants?: number
-}
+>
 
 // ── File editor tracking ──
 export interface EditorEntry {

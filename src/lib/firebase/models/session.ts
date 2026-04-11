@@ -36,7 +36,6 @@ export async function createSession(
     participants: {},
     files: input.files,
     active: true,
-    maxParticipants: input.maxParticipants ?? 4,
     createdAt: now,
     closedAt: null,
     lastDraftAt: null,
@@ -94,13 +93,8 @@ export async function joinSession(
     throw new Error('Session is closed')
   }
 
-  // Check participant limit
-  const currentCount = Object.keys(data.participants).length
-  if (currentCount >= data.maxParticipants) {
-    throw new Error('Session is full')
-  }
-
   // Assign a cursor color — cycle through CURSOR_COLORS
+  const currentCount = Object.keys(data.participants).length
   const { CURSOR_COLORS: colors } = await import('@/types')
   const colorIndex = currentCount % colors.length
   const color = colors[colorIndex]

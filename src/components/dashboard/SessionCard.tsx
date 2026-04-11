@@ -76,7 +76,7 @@ export function SessionCard({ session }: SessionCardProps) {
             ))}
           </div>
           <span className="text-xs font-medium text-muted-foreground">
-            {participantCount}/{session.maxParticipants}
+            {participantCount} {participantCount === 1 ? 'participant' : 'participants'}
           </span>
         </div>
 

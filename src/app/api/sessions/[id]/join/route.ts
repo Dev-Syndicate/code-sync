@@ -49,7 +49,6 @@ export async function POST(
   const session = sessionSnap.data() as {
     active: boolean
     owner: string
-    maxParticipants: number
     participants?: Record<string, unknown>
   }
 
@@ -68,11 +67,7 @@ export async function POST(
     return apiSuccess({ joined: false, reason: 'already-participant' })
   }
 
-  // Enforce participant cap.
   const currentCount = Object.keys(session.participants ?? {}).length
-  if (currentCount >= session.maxParticipants) {
-    return apiError('FORBIDDEN', 'Session is full.', 403)
-  }
 
   // Look up the user's display name and avatar. ensureUserDoc reads the
   // /users/{uid} doc, or backfills it from the Firebase Auth record if

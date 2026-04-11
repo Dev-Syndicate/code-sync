@@ -33,13 +33,12 @@ export async function POST(req: NextRequest) {
     return apiError('VALIDATION_ERROR', 'Invalid request body.', 400)
   }
 
-  const { repo, repoOwner, repoUrl, branch = 'main', owner, maxParticipants = 4 } = body as {
-    repo:             string
-    repoOwner:        string
-    repoUrl:          string
-    branch?:          string
-    owner:            string
-    maxParticipants?: number
+  const { repo, repoOwner, repoUrl, branch = 'main', owner } = body as {
+    repo:      string
+    repoOwner: string
+    repoUrl:   string
+    branch?:   string
+    owner:     string
   }
 
   if (!repo || !repoOwner || !repoUrl || !owner) {
@@ -103,7 +102,6 @@ export async function POST(req: NextRequest) {
     },
     files,
     active:          true,
-    maxParticipants,
     createdAt:       FieldValue.serverTimestamp(),
     closedAt:        null,
     lastDraftAt:     null,
