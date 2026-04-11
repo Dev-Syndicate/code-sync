@@ -199,14 +199,14 @@ export default function DashboardPage() {
                   />
                 </div>
 
-                <Button
+                {/* <Button
                   variant="ghost"
                   size="icon"
                   className="h-10 w-10 rounded-full border border-border/60 text-muted-foreground hover:text-foreground"
                   aria-label="Notifications"
                 >
                   <Bell className="h-[18px] w-[18px]" />
-                </Button>
+                </Button> */}
 
                 {/* Theme toggle */}
                 <ThemeToggle />
