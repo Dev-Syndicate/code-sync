@@ -20,6 +20,7 @@ import { useFileEditorTracking } from '@/hooks/useFileEditorTracking'
 import { useAuth } from '@/hooks/useAuth'
 import { useDraftSave } from '@/hooks/useDraftSave'
 import { usePendingDeletesSync } from '@/hooks/usePendingDeletesSync'
+import { useSharedFileTree } from '@/hooks/useSharedFileTree'
 import { useEditorStore } from '@/store/editorStore'
 import { buildFileTree, type FlatFileEntry } from '@/lib/editor/buildFileTree'
 import { RightSidebar } from '@/components/session/RightSidebar'
@@ -256,6 +257,11 @@ export default function SessionPage({
   // from the server and prunes the tree on mount, then debounces PUTs as
   // the user continues to delete/rename files.
   usePendingDeletesSync({ sessionId, treeReady: treeLoaded })
+
+  // Propagate Explorer-created files/folders across every peer via a
+  // shared Y.Map in the ydoc. Gated on treeLoaded so we don't race the
+  // initial GitHub snapshot fetch.
+  useSharedFileTree({ ydoc, treeReady: treeLoaded })
 
   // ── Save Revert — roll every open file back to its last saved draft ──
   const { revertToLastSave, revertStatus } = useDraftRevert({ sessionId, ydoc })

@@ -20,6 +20,11 @@
 import { useCallback } from 'react'
 import type * as Y from 'yjs'
 import { useEditorStore, type FileNode } from '@/store/editorStore'
+import {
+  writeSharedEntry,
+  deleteSharedEntry,
+  renameSharedEntries,
+} from './useSharedFileTree'
 
 interface UseFileTreeOpsOptions {
   ydoc: Y.Doc | null
@@ -133,6 +138,15 @@ export function useFileTreeOps(
       // empty-but-present entry under the new key. Harmless if nobody
       // else has this file — they'll get it on next sync.
       writeFileContent(ydoc, fullPath, '')
+      // Announce the new entry in the shared file-tree map so remote
+      // peers see it in their Explorer even if they haven't opened it.
+      if (ydoc) {
+        const node = store.findNode(fullPath)
+        writeSharedEntry(ydoc, fullPath, {
+          type: 'file',
+          language: node?.language,
+        })
+      }
       return fullPath
     },
     [ydoc]
@@ -140,9 +154,14 @@ export function useFileTreeOps(
 
   const createFolder = useCallback(
     (parentPath: string | null, name: string): string | null => {
-      return useEditorStore.getState().createFolder(parentPath, name)
+      const fullPath = useEditorStore.getState().createFolder(parentPath, name)
+      if (!fullPath) return null
+      if (ydoc) {
+        writeSharedEntry(ydoc, fullPath, { type: 'directory' })
+      }
+      return fullPath
     },
-    []
+    [ydoc]
   )
 
   const renameNode = useCallback(
@@ -214,6 +233,49 @@ export function useFileTreeOps(
         if (tab) finalStore.markDirty(rewritten, true)
       }
 
+      // Propagate the rename through the shared file-tree map. Renamed
+      // GitHub leaves become "new blob at new path + delete at old path"
+      // on the next commit, so for remote peers the new path needs to
+      // appear in the shared map AND the (newly created) node under the
+      // new path now has isNew=true in every peer's store. Meanwhile the
+      // old-path shared-map entry (if any — only present when the leaf
+      // was already isNew) must be removed.
+      if (ydoc) {
+        // Figure out which of the old paths were in the shared map.
+        // isNew leaves were in the map; GitHub-sourced leaves were not.
+        const renamePairs: Array<{ oldPath: string; newPath: string }> = []
+        const newOnlyAdds: Array<{
+          path: string
+          entry: { type: 'file' | 'directory'; language?: string }
+        }> = []
+        for (const snap of snapshots) {
+          const rewritten = newPath + snap.oldPath.slice(path.length)
+          if (snap.isNew) {
+            renamePairs.push({ oldPath: snap.oldPath, newPath: rewritten })
+          } else {
+            // GitHub-sourced leaf: the commit flow will create a new
+            // blob at `rewritten`. For peers' Explorer to show the
+            // new path immediately, add it as an isNew entry in the
+            // shared map (which is what it effectively is now — the
+            // new path has no GitHub counterpart yet).
+            const node = finalStore.findNode(rewritten)
+            newOnlyAdds.push({
+              path: rewritten,
+              entry: { type: 'file', language: node?.language },
+            })
+          }
+        }
+        // Also handle the renamed root itself if it's a directory that
+        // was isNew — directories have their own shared-map entry.
+        if (node.type === 'directory' && node.isNew) {
+          renamePairs.push({ oldPath: path, newPath })
+        }
+        renameSharedEntries(ydoc, renamePairs)
+        for (const add of newOnlyAdds) {
+          writeSharedEntry(ydoc, add.path, add.entry)
+        }
+      }
+
       return newPath
     },
     [ydoc]
@@ -249,6 +311,11 @@ export function useFileTreeOps(
             if (ytext.length > 0) ytext.delete(0, ytext.length)
           }
         }, 'file-tree-ops')
+        // Remove the subtree from the shared file-tree map so remote
+        // peers drop the entries from their Explorer. GitHub-sourced
+        // entries aren't in the map, so this is a no-op for them —
+        // their deletion still flows through pendingDeletes.
+        deleteSharedEntry(ydoc, path)
       }
     },
     [ydoc]
@@ -383,12 +450,23 @@ function pasteCopyRecursive(
     // Also update the tab we just opened so the Monaco model reflects
     // the pasted content before any Yjs binding settles.
     useEditorStore.getState().updateFileContent(created, content)
+    // Announce in the shared map so peers see the pasted file.
+    if (ydoc) {
+      const node = useEditorStore.getState().findNode(created)
+      writeSharedEntry(ydoc, created, {
+        type: 'file',
+        language: node?.language,
+      })
+    }
     return created
   }
 
   // Directory: create the folder, then recurse into children.
   const createdDir = store.createFolder(destParentPath, finalName)
   if (!createdDir) return null
+  if (ydoc) {
+    writeSharedEntry(ydoc, createdDir, { type: 'directory' })
+  }
 
   for (const child of src.children ?? []) {
     // Children keep their own names (no collision possible because we
