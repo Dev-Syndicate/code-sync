@@ -26,7 +26,11 @@ export function diffAgainstOriginal(
     const original = originalsMap.get(filePath)
     if (!original) return
 
-    const current = (type as Y.Text).toString()
+    // `ydoc.share` is typed as `Map<string, AbstractType<YEvent<any>>>`,
+    // which doesn't structurally overlap with `Y.Text`, so a direct cast
+    // is rejected. Every `file:*` entry in this doc is created via
+    // `ydoc.getText(...)`, so narrowing through `unknown` is safe.
+    const current = (type as unknown as Y.Text).toString()
     if (current !== original.content) {
       changes.push({
         path:        filePath,
