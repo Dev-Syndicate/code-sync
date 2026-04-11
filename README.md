@@ -213,6 +213,15 @@ CodeSync deploys as **two services**:
 - [PRD-CodeSync.md](./PRD-CodeSync.md) — product requirements.
 - [TDD-CodeSync.md](./TDD-CodeSync.md) — technical design.
 
+## Team
+
+Built by **DevSyndicate**:
+
+- Mohammed Asfar
+- Mithilesh
+- Teenie Rod Joshua
+- Giridharan
+
 ## License
 
-Private / unreleased.
+Copyright © DevSyndicate. All rights reserved. Private / unreleased.
