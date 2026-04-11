@@ -38,7 +38,10 @@ import { createServer, type IncomingMessage } from 'node:http'
 //                    declarations. The runtime export is correct.
 import { setupWSConnection } from 'y-websocket/bin/utils'
 
-const PORT = Number(process.env.YJS_PORT ?? 1234)
+// Railway / Render / Fly inject `PORT` for every service and route their
+// health checks to it. Prefer that; fall back to `YJS_PORT` for local dev
+// where you might run multiple services side-by-side on explicit ports.
+const PORT = Number(process.env.PORT ?? process.env.YJS_PORT ?? 1234)
 const HOST = process.env.YJS_HOST ?? '0.0.0.0'
 
 // Plain HTTP server so we can answer health checks on GET / and still
