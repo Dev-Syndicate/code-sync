@@ -152,6 +152,18 @@ interface EditorState {
    */
   deleteNode: (path: string) => void
 
+  /**
+   * Insert a node into the tree WITHOUT opening a tab or touching the
+   * active file. Used by the shared-file-tree observer when a remote
+   * peer creates a file — we just want the entry to appear in our
+   * Explorer, not hijack our editor focus. Returns the inserted path or
+   * null on name collision.
+   */
+  insertRemoteNode: (
+    parentPath: string | null,
+    node: { name: string; type: 'file' | 'directory'; language?: string }
+  ) => string | null
+
   // Actions — Clipboard
   setClipboard: (entry: FileClipboardEntry | null) => void
 
@@ -669,6 +681,39 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       activeFile: nextActive,
       clipboard: nextClipboard,
     })
+  },
+
+  insertRemoteNode: (parentPath, node) => {
+    const trimmed = node.name.trim()
+    if (!trimmed || trimmed.includes('/')) return null
+    const fullPath = parentPath ? `${parentPath}/${trimmed}` : trimmed
+
+    // If the path already exists, treat as a no-op (the remote and local
+    // state agree). This covers the echo/reseed case where a peer pushes
+    // an entry we already have.
+    if (findNodeIn(get().files, fullPath)) return fullPath
+
+    const newNode: FileNode =
+      node.type === 'file'
+        ? {
+            name: trimmed,
+            path: fullPath,
+            type: 'file',
+            language: node.language ?? guessLanguage(trimmed),
+            isNew: true,
+          }
+        : {
+            name: trimmed,
+            path: fullPath,
+            type: 'directory',
+            children: [],
+            isNew: true,
+          }
+
+    const nextTree = insertNode(get().files, parentPath, newNode)
+    if (!nextTree) return null
+    set({ files: nextTree })
+    return fullPath
   },
 
   setClipboard: (entry) => set({ clipboard: entry }),
